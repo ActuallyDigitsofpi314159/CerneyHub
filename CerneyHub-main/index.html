@@ -4,8 +4,36 @@
 <meta charset="UTF-8">
 <title>C-Hub</title>
 
-<link rel="stylesheet"
-href="https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/stylingPart.css">
+<!-- CSS will be loaded dynamically with version -->
+<link id="style-link" rel="stylesheet">
+
+<script>
+(async () => {
+  try {
+    const versionRes = await fetch("https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/latest.json");
+    const versionData = await versionRes.json();
+    const version = versionData.version || "latest";
+    
+    // Load CSS with version param
+    document.getElementById("style-link").href = 
+      "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/stylingPart.css?v=" + version;
+    
+    // Load JS with version param
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/logicPart.js?v=" + version;
+    script.defer = true;
+    document.body.appendChild(script);
+  } catch (e) {
+    console.warn("Failed to load version info, using default URLs");
+    document.getElementById("style-link").href = 
+      "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/stylingPart.css";
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/logicPart.js";
+    script.defer = true;
+    document.body.appendChild(script);
+  }
+})();
+</script>
 
 </head>
 <body>
@@ -82,9 +110,6 @@ href="https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/C
 </footer>
 
 </div>
-
-<!-- JS (IMPORTANT FIX) -->
-<script src="https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/logicPart.js" defer></script>
 
 </body>
 </html>
