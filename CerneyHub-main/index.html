@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>C-Hub</title>
+<!-- For production: <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/stylingPart.css"> -->
+<link rel="stylesheet" href="stylingPart.css">
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<!-- PASSWORD GATE -->
+<div id="pw-gate">
+  <div class="pw-logo">The C-Hub</div>
+  <div class="pw-sub">Haha you thought, this is password locked!</div>
+  <div class="pw-box">
+    <div class="pw-label">ENTER PASSWORD</div>
+    <input id="pw-input" type="password" maxlength="32" placeholder="it's not 67" autocomplete="off" spellcheck="false" />
+    <button id="pw-btn" onclick="checkPassword()">ENTER ▶</button>
+    <div id="pw-error"></div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="main">
+
+<header>
+  <div class="logo">The C-Hub</div>
+  <div class="sub">Honestly, this is pretty fire</div>
+  <div class="blinking-note">— CLICK ON A THINGY —</div>
+</header>
+
+<div class="cards">
+
+  <div class="card card-mario" onclick="launchMario()">
+    <span class="card-icon">🍄</span>
+    <div class="card-title">Super Mario<br>64</div>
+    <div class="card-desc">
+      WebGL port of Super Mario 64<br>
+      (1996)
+    </div>
+    <span class="badge badge-great">✔ FASTEST BY FAR</span>
+    <div class="launch-arrow">▶</div>
+  </div>
+
+  <div class="card card-e112" onclick="launchE112()">
+    <span class="card-icon">⛏️</span>
+    <div class="card-title">Eaglercraft<br>1.12</div>
+    <div class="card-desc">
+      Minecraft 1.12.2<br>
+      (2017)
+    </div>
+    <span class="badge badge-ok">🐢 Very Slow &amp; Unstable</span>
+    <div class="launch-arrow">▶</div>
+  </div>
+
+  <div class="card card-dumllm" onclick="launchDumLLM()">
+    <span class="card-icon">🤖</span>
+    <div class="card-title">dumLLM</div>
+    <div class="card-desc">
+      Open-source LLMs running<br>
+      directly on your hardware
+    </div>
+    <span class="badge badge-ai">✦ It's dum alright</span>
+    <div class="launch-arrow">▶</div>
+  </div>
+
+  <div class="card card-badbrowser" onclick="launchBadBrowser()">
+    <span class="card-icon">🌐</span>
+    <div class="card-title">Bad Browser</div>
+    <div class="card-desc">
+      A sketchy little<br>
+      browser thing
+    </div>
+    <span class="badge badge-browser">⚙ probably broken ngl</span>
+    <div class="launch-arrow">▶</div>
+  </div>
+
+  <div class="card card-minekhan" onclick="launchMineKhan()">
+    <span class="card-icon">⛏️</span>
+    <div class="card-title">MineKhan</div>
+    <div class="card-desc">
+      Minecraft clone in<br>
+      your browser!
+    </div>
+    <span class="badge badge-game">🎮 Play Now</span>
+    <div class="launch-arrow">▶</div>
+  </div>
+
+</div>
+
+<details class="controls-tip">
+  <summary>Mario 64 — Key Bindings</summary>
+  <div class="binds">
+    <div class="bind"><span class="key">W A S D</span> Move</div>
+    <div class="bind"><span class="key">↑ ↓ ← →</span> Camera</div>
+    <div class="bind"><span class="key">Space</span> Jump (A)</div>
+    <div class="bind"><span class="key">E</span> Punch (B)</div>
+    <div class="bind"><span class="key">Shift</span> Crouch (Z)</div>
+    <div class="bind"><span class="key">Ctrl</span> Zoom Cam (L)</div>
+    <div class="bind"><span class="key">Enter</span> Pause</div>
+    <div class="bind"><span class="key">LMB</span> C-Button</div>
+  </div>
+</details>
+
+<footer>
+  FOR DEMONSTRATIONAL PURPOSES ONLY!!!<br>
+  UNDER NO CIRCUMSTANCES ARE YOU ALLOWED TO SHARE THIS<br>
+  WITHOUT MY APPROVAL OR USE THIS IN SCHOOL.<br>
+  IF I SEE EITHER TERM BROKEN, I CAN AND WILL SHUT<br>THIS DOWN.
+</footer>
+
+</div><!-- end #main -->
+
+<!-- For production: <script src="https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/logicPart.js" async='true' crossorigin='anonymous'></script> -->
+<script src="logicPart.js" async='true' crossorigin='anonymous'></script>
+</body>
+</html>
