@@ -481,32 +481,71 @@ function launchDumLLM(){
 function launchBadBrowser(){
   flash();
   setTimeout(()=>{
-    const win = window.open("about:blank","badbrowser","width=1280,height=720,menubar=no,toolbar=no,location=no,status=no");
-    fetch("https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/badbrowser.html?v=" + Date.now())
-      .then(response => response.text())
+    const win = window.open(
+      "about:blank",
+      "badbrowser",
+      "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
+    );
+
+    if (!win) {
+      alert("Popup blocked. Allow popups.");
+      return;
+    }
+
+    const url =
+      "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/badbrowser.html?v=" +
+      Date.now();
+
+    fetch(url)
+      .then(r => {
+        if (!r.ok) throw new Error("Failed to load Bad Browser");
+        return r.text();
+      })
       .then(html => {
         win.document.open();
         win.document.write(html);
         win.document.close();
       })
-      .catch(err => console.error("Failed to load badbrowser.html", err));
-    try{win.focus();}catch(e){}
+      .catch(err => {
+        win.document.write("<h1>Error loading browser</h1><p>" + err.message + "</p>");
+      });
+
+    try { win.focus(); } catch(e) {}
   },150);
 }
 
-// ---- MineKhan ----
 function launchMineKhan(){
   flash();
   setTimeout(()=>{
-    const win = window.open("about:blank","minekhan","width=1280,height=720,menubar=no,toolbar=no,location=no,status=no");
-    fetch("https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/mineKhan.html?v=" + Date.now())
-      .then(response => response.text())
+    const win = window.open(
+      "about:blank",
+      "minekhan",
+      "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
+    );
+
+    if (!win) {
+      alert("Popup blocked. Allow popups to launch MineKhan.");
+      return;
+    }
+
+    const url =
+      "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/mineKhan.html?v=" +
+      Date.now();
+
+    fetch(url)
+      .then(r => {
+        if (!r.ok) throw new Error("Failed to load MineKhan");
+        return r.text();
+      })
       .then(html => {
         win.document.open();
         win.document.write(html);
         win.document.close();
       })
-      .catch(err => console.error("Failed to load mineKhan.html", err));
-    try{win.focus();}catch(e){}
+      .catch(err => {
+        win.document.write("<h1>Failed to load MineKhan</h1><p>" + err.message + "</p>");
+      });
+
+    try { win.focus(); } catch(e) {}
   },150);
 }
