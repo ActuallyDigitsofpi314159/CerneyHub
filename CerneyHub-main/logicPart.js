@@ -182,22 +182,59 @@ function launchDumLLM(){
 function launchBadBrowser(){
   flash();
   setTimeout(()=>{
-    openApp(
-      BASE + "badbrowser.html?v=" + Date.now(),
+    const win = window.open(
+      "about:blank",
       "badbrowser",
-      "Bad Browser"
+      "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
     );
+
+    if (!win) return alert("Popup blocked");
+
+    fetch(BASE + "badbrowser.html?v=" + Date.now())
+      .then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text();
+      })
+      .then(html => {
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+      })
+      .catch(err => {
+        win.document.write("<h1>Failed to load Bad Browser</h1><p>" + err.message + "</p>");
+      });
+
+    try{win.focus();}catch(e){}
   },150);
 }
+
 
 // ---- MineKhan ----
 function launchMineKhan(){
   flash();
   setTimeout(()=>{
-    openApp(
-      BASE + "mineKhan.html?v=" + Date.now(),
+    const win = window.open(
+      "about:blank",
       "minekhan",
-      "MineKhan"
+      "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
     );
+
+    if (!win) return alert("Popup blocked");
+
+    fetch(BASE + "mineKhan.html?v=" + Date.now())
+      .then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text();
+      })
+      .then(html => {
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+      })
+      .catch(err => {
+        win.document.write("<h1>Failed to load MineKhan</h1><p>" + err.message + "</p>");
+      });
+
+    try{win.focus();}catch(e){}
   },150);
 }
