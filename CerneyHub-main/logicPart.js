@@ -5,17 +5,8 @@ const CORRECT = 'html5';
 const BASE =
 "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/";
 
-// VERSION SYSTEM: Fetched from latest.json for easy cache busting
-let VERSION = "latest";
-(async () => {
-  try {
-    const versionRes = await fetch("https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/latest.json");
-    const versionData = await versionRes.json();
-    VERSION = versionData.version || "latest";
-  } catch (e) {
-    console.warn("Failed to fetch version, using fallback");
-  }
-})();
+// Cache busting with timestamp for fresh loads
+const CACHE_BUST = Date.now();
 
 function checkPassword(){
   const val = document.getElementById('pw-input').value;
@@ -202,8 +193,7 @@ function launchBadBrowser(){
 
     if (!win) return alert("Popup blocked");
 
-    const version = VERSION !== "latest" ? VERSION : Date.now();
-    fetch(BASE + "badbrowser.html?v=" + version)
+    fetch(BASE + "badbrowser.html?v=" + CACHE_BUST)
       .then(r => {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.text();
@@ -234,8 +224,7 @@ function launchMineKhan(){
 
     if (!win) return alert("Popup blocked");
 
-    const version = VERSION !== "latest" ? VERSION : Date.now();
-    fetch(BASE + "mineKhan.html?v=" + version)
+    fetch(BASE + "mineKhan.html?v=" + CACHE_BUST)
       .then(r => {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.text();

@@ -4,35 +4,20 @@
 <meta charset="UTF-8">
 <title>C-Hub</title>
 
-<!-- CSS will be loaded dynamically with version -->
+<!-- CSS will be loaded dynamically with cache busting parameter -->
 <link id="style-link" rel="stylesheet">
 
 <script>
-(async () => {
-  try {
-    const versionRes = await fetch("https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/latest.json");
-    const versionData = await versionRes.json();
-    const version = versionData.version || "latest";
-    
-    // Load CSS with version param
-    document.getElementById("style-link").href = 
-      "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/stylingPart.css?v=" + version;
-    
-    // Load JS with version param
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/logicPart.js?v=" + version;
-    script.defer = true;
-    document.body.appendChild(script);
-  } catch (e) {
-    console.warn("Failed to load version info, using default URLs");
-    document.getElementById("style-link").href = 
-      "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/stylingPart.css";
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/logicPart.js";
-    script.defer = true;
-    document.body.appendChild(script);
-  }
-})();
+// Force cache busting with random parameter - bypasses jsdelivr cache completely
+const cacheBust = Math.random().toString(36).substr(2, 9);
+document.getElementById("style-link").href = 
+  "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/stylingPart.css?v=" + cacheBust;
+
+// Load JS with cache busting
+const script = document.createElement("script");
+script.src = "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@main/CerneyHub-main/logicPart.js?v=" + cacheBust;
+script.defer = true;
+document.body.appendChild(script);
 </script>
 
 </head>
