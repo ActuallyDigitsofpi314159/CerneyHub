@@ -103,11 +103,11 @@
 // Force cache busting with random parameter - bypasses jsdelivr cache completely
 const cacheBust = Math.random().toString(36).substr(2, 9);
 document.getElementById("style-link").href = 
-  "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@latest/CerneyHub-main/stylingPart.css?v=" + cacheBust;
+  "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@latest/stylingPart.css?v=" + cacheBust;
 
 // Load JS with cache busting
 const script = document.createElement("script");
-script.src = "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub-main@latest/CerneyHub-main/logicPart.js?v=" + cacheBust;
+script.src = "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@latest/logicPart.js?v=" + cacheBust;
 document.body.appendChild(script);
 </script>
 
