@@ -133,9 +133,9 @@ function launchBSS(){
 function launchGranny(){
   launchApp("granny.html", "granny");
 }
-// ---- 99 Nights ----
-function launch99Nights(){
-  launchApp("99nights.html", "99nights");
+// ---- Basketball Legends ----
+function launchBasketballLegends(){
+  launchApp("basketballlegends.html", "basketballlegends");
 }
 // ---- 1v1 ----
 function launch1v1(){

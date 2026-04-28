@@ -327,9 +327,9 @@
   .card-granny::before { background: linear-gradient(135deg, rgba(249,115,22,0.1) 0%, transparent 70%); }
   .card-granny:hover { border-color: var(--orange); }
 
-  .card-99nights { --c: var(--purple); }
-  .card-99nights::before { background: linear-gradient(135deg, rgba(168,85,247,0.1) 0%, transparent 70%); }
-  .card-99nights:hover { border-color: var(--purple); }
+  .card-basketballlegends { --c: var(--purple); }
+  .card-basketballlegends::before { background: linear-gradient(135deg, rgba(168,85,247,0.1) 0%, transparent 70%); }
+  .card-basketballlegends:hover { border-color: var(--purple); }
 
   .card-1v1 { --c: var(--pink); }
   .card-1v1::before { background: linear-gradient(135deg, rgba(236,72,153,0.1) 0%, transparent 70%); }
