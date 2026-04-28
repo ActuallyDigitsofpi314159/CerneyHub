@@ -336,12 +336,15 @@
   .card-1v1:hover { border-color: var(--pink); }
 
   .card-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
+    width: 48px;
+    height: 48px;
     display: block;
+    margin-bottom: 16px;
     line-height: 1;
-    text-shadow: 0 0 20px rgba(255,255,255,0.3);
+    filter: drop-shadow(0 0 8px rgba(255,255,255,0.3));
+    object-fit: contain;
   }
+
   .card-title {
     font-family: 'JetBrains Mono', monospace;
     font-size: 14px;
@@ -554,7 +557,8 @@
     }
 
     .card-icon {
-      font-size: 40px;
+      width: 40px;
+      height: 40px;
     }
 
     .card-title {
