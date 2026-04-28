@@ -3,15 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <title>C-Hub</title>
-
 <!-- CSS will be loaded dynamically with cache busting parameter -->
 <link id="style-link" rel="stylesheet">
-
 </head>
 <body>
-
 <div class="grid-bg"></div>
-
 <!-- PASSWORD GATE -->
 <div id="pw-gate">
   <div class="pw-logo">The C-Hub</div>
@@ -23,18 +19,14 @@
     <div id="pw-error"></div>
   </div>
 </div>
-
 <!-- MAIN CONTENT -->
 <div id="main">
-
 <header>
   <div class="logo">The C-Hub</div>
   <div class="sub">Honestly, this is pretty fire</div>
   <div class="blinking-note">— CLICK ON A THINGY —</div>
 </header>
-
 <div class="cards">
-
   <div class="card card-mario" onclick="launchMario()">
     <span class="card-icon">🍄</span>
     <div class="card-title">Super Mario<br>64</div>
@@ -42,7 +34,6 @@
     <span class="badge badge-great">✔ FASTEST BY FAR</span>
     <div class="launch-arrow">▶</div>
   </div>
-
   <div class="card card-e112" onclick="launchE112()">
     <span class="card-icon">⛏️</span>
     <div class="card-title">Eaglercraft<br>1.12</div>
@@ -50,7 +41,6 @@
     <span class="badge badge-ok">🐢 Very Slow &amp; Unstable</span>
     <div class="launch-arrow">▶</div>
   </div>
-
   <div class="card card-dumllm" onclick="launchDumLLM()">
     <span class="card-icon">🤖</span>
     <div class="card-title">dumLLM</div>
@@ -58,7 +48,6 @@
     <span class="badge badge-ai">✦ It's dum alright</span>
     <div class="launch-arrow">▶</div>
   </div>
-
   <div class="card card-badbrowser" onclick="launchBadBrowser()">
     <span class="card-icon">🌐</span>
     <div class="card-title">Bad Browser</div>
@@ -66,7 +55,6 @@
     <span class="badge badge-browser">⚙ probably broken ngl</span>
     <div class="launch-arrow">▶</div>
   </div>
-
   <div class="card card-minekhan" onclick="launchMineKhan()">
     <span class="card-icon">💚</span>
     <div class="card-title">MineKhan</div>
@@ -74,7 +62,6 @@
     <span class="badge badge-game">⚡ Actually stable</span>
     <div class="launch-arrow">▶</div>
   </div>
-
   <div class="card card-karlson" onclick="launchKarlson()">
     <span class="card-icon">🔫</span>
     <div class="card-title">Karlson</div>
@@ -82,7 +69,6 @@
     <span class="badge badge-game">🎮 basically fornite</span>
     <div class="launch-arrow">▶</div>
   </div>
-
   <div class="card card-bss" onclick="launchBSS()">
     <span class="card-icon">🐝</span>
     <div class="card-title">Bee Swarm Simulator</div>
@@ -90,26 +76,41 @@
     <span class="badge badge-tool">🐝Super fun🐝</span>
     <div class="launch-arrow">▶</div>
   </div>
-
+  <div class="card card-granny" onclick="launchGranny()">
+    <span class="card-icon">👵</span>
+    <div class="card-title">Granny</div>
+    <div class="card-desc">Escape from a creepy house<br>before granny catches you</div>
+    <span class="badge badge-game">👻 Spooky vibes</span>
+    <div class="launch-arrow">▶</div>
+  </div>
+  <div class="card card-99nights" onclick="launch99Nights()">
+    <span class="card-icon">🌙</span>
+    <div class="card-title">99 Nights</div>
+    <div class="card-desc">Action-packed gameplay<br>across 99 levels</div>
+    <span class="badge badge-game">⚔️ Epic battles</span>
+    <div class="launch-arrow">▶</div>
+  </div>
+  <div class="card card-1v1" onclick="launch1v1()">
+    <span class="card-icon">🥊</span>
+    <div class="card-title">1v1</div>
+    <div class="card-desc">Head-to-head competitive<br>gameplay</div>
+    <span class="badge badge-game">🏆 Competitive</span>
+    <div class="launch-arrow">▶</div>
+  </div>
 </div>
-
 <footer>
   FOR DEMONSTRATIONAL PURPOSES ONLY!!!
 </footer>
-
 </div>
-
 <script>
 // Force cache busting with random parameter - bypasses jsdelivr cache completely
 const cacheBust = Math.random().toString(36).substr(2, 9);
 document.getElementById("style-link").href = 
   "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@latest/stylingPart.css?v=" + cacheBust;
-
 // Load JS with cache busting
 const script = document.createElement("script");
 script.src = "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@latest/logicPart.js?v=" + cacheBust;
 document.body.appendChild(script);
 </script>
-
 </body>
 </html>
