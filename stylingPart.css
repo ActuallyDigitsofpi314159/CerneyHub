@@ -383,13 +383,14 @@
     position: absolute;
     bottom: 20px;
     right: 20px;
-    font-size: 20px;
+    width: 24px;
+    height: 24px;
     color: var(--c);
     opacity: 0;
-    transform: translateX(-8px);
+    transform: translateX(-8px) rotate(90deg);
     transition: opacity 0.3s ease, transform 0.3s ease;
   }
-  .card:hover .launch-arrow { opacity: 1; transform: translateX(0); }
+  .card:hover .launch-arrow { opacity: 1; transform: translateX(0) rotate(90deg); }
 
   /* ---- Controls tooltip ---- */
   .controls-tip {
