@@ -1,5 +1,5 @@
 // ---- Password gate ----
-const CORRECT = 'html5';
+const CORRECT = '3point14159';
 // IMPORTANT: base path (case-sensitive, must match GitHub exactly)
 const BASE =
 "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@latest/";
