@@ -38,7 +38,7 @@ function flash(){
   document.body.appendChild(f);
   setTimeout(()=>f.remove(),500);
 }
-// ---- GENERIC APP LAUNCHER ----
+// ---- APP LAUNCHER ----
 function launchApp(filename, title) {
   flash();
   
@@ -141,3 +141,14 @@ function launchBasketballLegends(){
 function launch1v1(){
   launchApp("1v1.html", "1v1");
 }
+
+// ---- Donkey Khan ---
+function launchDonkeyKhan(){
+  launchApp("donkeyKhan.html", "donkeyKhan");
+}
+
+// ---- Generic Platformer 3d ---
+function launchGenericPlatformer3D(){
+  launchApp("genericPlatformer3d.html", "genericPlatformer3d");
+}
+
