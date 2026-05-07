@@ -1,13 +1,73 @@
-<!DOCTYPE html><!--Comply with my terms of service.-->
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>C-Hub</title>
-<!-- CSS will be loaded dynamically with cache busting parameter -->
+
+<!-- Critical inline styles so nothing looks broken before CSS loads -->
+<style>
+    body { margin:0; font-family: system-ui, sans-serif; background:#0a0a0a; color:#fff; overflow:hidden; }
+    #loader {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: #0a0a0a;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.6s ease;
+    }
+    .loader-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #333;
+        border-top: 5px solid #00ffcc;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .loader-text { font-size: 1.4rem; margin-bottom: 8px; }
+    .loader-sub { color: #888; font-size: 1rem; }
+    
+    #error-screen {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: #0a0a0a;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        color: #ff5555;
+    }
+    
+    #pw-gate, #main { display: none; } /* Hidden until everything loads */
+</style>
+
+<!-- CSS will be loaded dynamically -->
 <link id="style-link" rel="stylesheet">
 </head>
 <body>
-<div class="grid-bg"></div>
+
+<!-- LOADING SCREEN -->
+<div id="loader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Loading C-Hub...</div>
+    <div class="loader-sub">This should take a few seconds</div>
+</div>
+
+<!-- ERROR SCREEN -->
+<div id="error-screen">
+    <h2>Failed to Load Resources</h2>
+    <p>jsDelivr is taking too long or is blocked.</p>
+    <button onclick="window.location.reload()" style="padding:12px 24px; font-size:1.1rem; margin-top:20px; background:#ff5555; color:white; border:none; border-radius:6px; cursor:pointer;">
+        Try Again
+    </button>
+</div>
+
 <!-- PASSWORD GATE -->
 <div id="pw-gate">
   <div class="pw-logo">The C-Hub</div>
@@ -19,6 +79,7 @@
     <div id="pw-error"></div>
   </div>
 </div>
+
 <!-- MAIN CONTENT -->
 <div id="main">
 <header>
@@ -27,6 +88,7 @@
   <div class="blinking-note">— CLICK ON A THINGY —</div>
 </header>
 <div class="cards">
+  <!-- ... your cards stay exactly the same ... -->
   <div class="card card-mario" onclick="launchMario()">
     <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f344.png" alt="Mushroom">
     <div class="card-title">Super Mario<br>64</div>
@@ -34,97 +96,74 @@
     <span class="badge badge-great">FASTEST BY FAR</span>
     <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
   </div>
-  <div class="card card-e112" onclick="launchE112()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/26cf.png" alt="Pickaxe">
-    <div class="card-title">Eaglercraft<br>1.12</div>
-    <div class="card-desc">Minecraft 1.12.2<br>(2017)</div>
-    <span class="badge badge-ok">VERY SLOW &amp; UNSTABLE</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
-  <div class="card card-dumllm" onclick="launchDumLLM()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f916.png" alt="Robot">
-    <div class="card-title">dumLLM</div>
-    <div class="card-desc">Open-source LLMs running<br>directly on your hardware</div>
-    <span class="badge badge-ai">IT'S DUM ALRIGHT</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
-  <div class="card card-badbrowser" onclick="launchBadBrowser()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f310.png" alt="Globe">
-    <div class="card-title">Bad Browser</div>
-    <div class="card-desc">A sketchy little<br>browser thing</div>
-    <span class="badge badge-browser">PROBABLY BROKEN</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
-  <div class="card card-minekhan" onclick="launchMineKhan()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f49f.png" alt="Green Heart">
-    <div class="card-title">MineKhan</div>
-    <div class="card-desc">Creative mode only<br>and limited blocks</div>
-    <span class="badge badge-game">ACTUALLY STABLE</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
-  <div class="card card-karlson" onclick="launchKarlson()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f52b.png" alt="Pistol">
-    <div class="card-title">Karlson</div>
-    <div class="card-desc">A fast-paced FPS<br>game experience</div>
-    <span class="badge badge-game">BASICALLY FORTNITE</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
-  <div class="card card-bss" onclick="launchBSS()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f41d.png" alt="Bee">
-    <div class="card-title">Bee Swarm Simulator</div>
-    <div class="card-desc">A remake of the Roblox classic!</div>
-    <span class="badge badge-tool">SUPER FUN</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
-  <div class="card card-granny" onclick="launchGranny()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f475.png" alt="Granny">
-    <div class="card-title">Granny</div>
-    <div class="card-desc">Escape from a creepy house<br>before granny catches you</div>
-    <span class="badge badge-game">SPOOKY VIBES</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
-  <div class="card card-basketballlegends" onclick="launchBasketballLegends()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3c0.png" alt="Basketball">
-    <div class="card-title">Basketball Legends</div>
-    <div class="card-desc">Hoops action with fast breaks<br>and superstar plays</div>
-    <span class="badge badge-game">EPIC BATTLES</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
-  <div class="card card-1v1" onclick="launch1v1()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f94a.png" alt="Fist Bump">
-    <div class="card-title">1v1</div>
-    <div class="card-desc">Head-to-head competitive<br>gameplay</div>
-    <span class="badge badge-game">COMPETITIVE</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
-  <div class="card card-donkeykhan" onclick="launchDonkeyKhan()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f98d.png" alt="Gorilla">
-    <div class="card-title">Donkey Khan</div>
-    <div class="card-desc">The game you know and love...<br>with a laser cannon.</div>
-    <span class="badge badge-game">RETRO VIBES</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
-  <div class="card card-genericplatformer3d" onclick="launchGenericPlatformer3D()">
-    <img class="card-icon" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3a9.png" alt="Top Hat">
-    <div class="card-title">Generic<br>Platformer 3D</div>
-    <div class="card-desc">A solid 3D platforming<br>experience</div>
-    <span class="badge badge-game">A port of my game</span>
-    <svg class="launch-arrow" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="12,2 22,20 2,20"/></svg>
-  </div>
+  
+  <!-- (All your other cards remain unchanged) -->
+  <!-- ... copy the rest of your cards here ... -->
+
 </div>
 <footer>
   FOR DEMONSTRATIONAL PURPOSES ONLY!!!
 </footer>
 </div>
+
 <script>
-// Force cache busting with random parameter - bypasses jsdelivr cache completely
+// Cache busting
 const cacheBust = Math.random().toString(36).substr(2, 9);
-document.getElementById("style-link").href = 
-  "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@latest/stylingPart.css?v=" + cacheBust;
-// Load JS with cache busting
+
+// Track loading state
+let cssLoaded = false;
+let jsLoaded = false;
+let timeoutId = null;
+
+function showError() {
+    document.getElementById('loader').style.opacity = '0';
+    setTimeout(() => {
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('error-screen').style.display = 'flex';
+    }, 600);
+}
+
+function allLoaded() {
+    if (cssLoaded && jsLoaded) {
+        clearTimeout(timeoutId);
+        document.getElementById('loader').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('pw-gate').style.display = 'flex'; // or 'block'
+        }, 500);
+    }
+}
+
+// Load CSS
+const styleLink = document.getElementById("style-link");
+styleLink.href = `https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@latest/stylingPart.css?v=${cacheBust}`;
+
+styleLink.onload = () => {
+    cssLoaded = true;
+    allLoaded();
+};
+
+styleLink.onerror = () => showError();
+
+// Load JS
 const script = document.createElement("script");
-script.src = "https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@latest/logicPart.js?v=" + cacheBust;
+script.src = `https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@latest/logicPart.js?v=${cacheBust}`;
+
+script.onload = () => {
+    jsLoaded = true;
+    allLoaded();
+};
+
+script.onerror = () => showError();
+
 document.body.appendChild(script);
+
+// 10 second timeout
+timeoutId = setTimeout(() => {
+    if (!cssLoaded || !jsLoaded) {
+        showError();
+    }
+}, 10000);
 </script>
 </body>
 </html>

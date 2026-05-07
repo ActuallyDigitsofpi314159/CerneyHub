@@ -1,1346 +1,1756 @@
-/**
+<!DOCTYPE html><html lang="en"><script>/**
 
+I am getting a raspberry pi 5, and i want to make it into a little arcade machine! I plan to run Super Mario 64, this, and generic platformer!
+Raspberry pi's aren't very powerful, so I needed to optimize this game a lot for the limited hardware.
+Idk how ima get mario 64 on it, but it can't be harder than this lol
+generic platformer was made using three.js which is pretty fast on its own, so it should be fine with some optimizations. I also have a few tricks up my sleeve to make it run better, but we'll see how it goes!
 
-DONKEY KHAN
-with a laser cannon
+This was one of my slowest games on Khan Academy, and it was a nightmare to optimize. I had to rewrite the entire rendering system to get it to run at a decent framerate. It paid off though! 4x faster than original. Here are some of the optimizations I made:
+ * DK Converter reduces draw calls, and load the graphics as images.
+ * culling to further reduce draw calls (only for barrels because map is baked)
+ * Biggest by far:
+ *  - bake the map. It is one giant image, just one draw call. This delivered 2.5x more speed.
+ * Various logic improvments, all increasing speed.
 
-thanks for 50 votes!
+Credit to copilot for help on optimizations
+@MushyAvocado for KA Project Exporter (https://www.khanacademy.org/computer-programming/ka-project-exporter/5195486791385088)
 
-Pros and Khans Round 1 Entry
+Original game:
+https://www.khanacademy.org/computer-programming/donkey-khan-pk/5669361168269312
 
-
-DISCLAIMER:
-[
-It's a... nerf gun with a laser pointer
-]
-
-arrow keys to move
-avoid barrels
-save your pet cat, Peach
-
-credit to 2bHNST for the name "Donkey Khan"
-
-
+~Digits <3
+done in a script to make it blue (again)
 */
-
-
-
-
-// Ladder
-var drawLadder = function(x, y, pixelSize, h){
-    // no outline
-    noStroke();
-    // cyan color
-    fill(0, 255, 255);
-    // draw the poles
-    rect(x, y, pixelSize, h*(4.33*pixelSize));
-    rect(x+pixelSize*5, y, pixelSize, h*(4.33*pixelSize));
-    // draw the horizontal lines
-    for(var i = 0; i<h; i++){
-        rect(x+pixelSize, y+(pixelSize*2)+(i*(pixelSize*4)), pixelSize*4, pixelSize);
-    }
-};
-
-// rotate a pixel art array 90° clockwise
-function rotateArray(canvasData) {
-    var rotated = [];
-    var rows = canvasData.length;
-    var cols = canvasData[0].length;
-    
-    for (var col = 0; col < cols; col++) {
-        var newRow = "";
-        for (var row = rows - 1; row >= 0; row--) {
-            newRow += canvasData[row][col];
-        }
-        rotated.push(newRow);
-    }
-    // returns the rotated array
-    return rotated;
-}
-
-// Flip array
-function flipArray(canvasData, type) {
-    if(type === "horrizontal") {
-        return canvasData.reverse();
-    } else {
-        var flippedData = [];
-        for (var i = 0; i < canvasData.length; i++) {
-            flippedData.push(canvasData[i].split("").reverse().join(""));
-        }
-        return flippedData;
-    }
-}
-// Draw the truss
-function drawTruss(x, y, pixelSize, length) {
-    // the data
-    var canvasData = [
-        "rrrrrrrrrrrrr",
-        "ddddddddddddd",
-        "bbrrrbbbrrrbb",
-        "brrbrrbrrbrrb",
-        "rrbbbrrrbbbrr",
-        "rrrrrrrrrrrrr",
-        "ddddddddddddd",
-    ];
-    // black not transparent so ladder doesnt poke through
-    var colorMap = {
-        "r": color(240, 0, 60),
-        "d": color(168, 0, 42),
-        "b": color(0)
-    };
-    // draw the rect if not "-"
-    for (var tile = 0; tile < length; tile++) {
-        var offsetX = (x + tile * canvasData[0].length * pixelSize);
-
-        for (var rowIndex = 0; rowIndex < canvasData.length; rowIndex++) {
-            for (var columnIndex = 0; columnIndex < canvasData[rowIndex].length; columnIndex++) {
-                var currentChar = canvasData[rowIndex][columnIndex];
-                if (currentChar !== "-") {
-                    noStroke();
-                    fill(colorMap[currentChar]);
-                    rect(offsetX + columnIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
-                }
-            }
-        }
-    }
-}
-
-// idle not in drawDK so i can explode him later
-var dkIdle = [
-    
-        "------ssss-----------rrrrrrr--------------------",
-        "----ssssrss---------rrrrrrrrr-------------------",
-        "--sssrsssrss-------rrssrrrssrr------------------",
-        "--ssssrsrrr-------rrssssrssssrr-----------------",
-        "-rsrsssrsss----ssrrssswwswwsssrss---------------",
-        "-rrrrsssss----sssrrrsswbsbwssrrsss--------------",
-        "-rrrrrr------rsssrrrsssssssssrrsss--------------",
-        "rrrrrrsrrrrrrrrrsssssssrrrssssssrrrs------------",
-        "rrrrrsrrrrrrrrrssswwssssssssswwssrrrss----------",
-        "rrrrrrrrrrrrrrrsswwwrwwwrwwwrwwwsrrrrrs---------",
-        "-rrrrrrrrrrrrrrssrwrrrwrrrwrrrwrsrrrrrrss-------",
-        "--rrrrrrrrrrrrrrsswwrwwwrwwwrwwsrrrrrrrrrs------",
-        "----rrrrrrrrrrrrrsssswwwwwwwsssrrrrrrrrrrrs-----",
-        "-----rrrrrrrrrrrrrrrsssssssssrrrrrrrsrrrrrr-----",
-        "-------rrrrrrrrrrrrrrrrrrrrrrrrrrrrsrrrrrrr-----",
-        "---------rrrrrrrrrrrrrrrrrrrrrrrsssrrrrrrrr-----",
-        "----------rrrrrrrsrsrsrrrrsssssrrrrrrrrrrr------",
-        "-----------rrrsrrrsssssrrsssrsrrrrrrrrrrr-------",
-        "-----------rrrrsrssssssrrssssrrrrrrrrrrr--------",
-        "-----------rrrrsrssrsssrrsssrsrrrrrrr-----------",
-        "-----------srrsrrsssssrssrssssssrrrrrss---------",
-        "----------srrrrsrrrrrrssssrssssrrrrrrrrss-------",
-        "---------srrrrrrrrrsssssssssrrrrrrrrrrrrrs------",
-        "--------srrrrrrrrrssrrrsrrsrssrrrrrrrrrrrs------",
-        "-------srrrrrrrrrrrssrsrsrrsrrrrrrrrrrrrrs------",
-        "-------srrrrrrrrrrsrrsrsrrsrrsrrrrrrrrrrrs------",
-        "-------srrrrrrrrrrrr----------rrrrrrrrrrrrr-----",
-        "--------rrrrrrrrrrr---------------rrrrrrrrsss---",
-        "--------rrrrrrrrrr-----------------rrrrsssrsss--",
-        "------srssrrrssrs------------------ssssrssssss--",
-        "-----srssrssssrss-------------------------------",
-        "----srssssssssss--------------------------------",
-        "------------------------------------------------",
-    
-    ];
-
-// death/win varibles
-var deathTimer = 0;
-var winTimer = 0; 
-// particles for when mr kong explodes
-var dkParticles = [];
-// is peach and mario dancing?
-// sadly not yet
-var dancing = false;
-
-// dk's direction to start
-var DKdirection = "left";
-// draw dk
-function drawDK(x, y, pixelSize) {
-    // cavasdata is the idle
-    var canvasData = dkIdle;
-    // flip him if hes facing left
-    if (DKdirection === "left") {
-        canvasData = flipArray(canvasData);
-    }
-    // colors used
-    var colorMap = {
-        "r": color(199, 0, 40),
-        "w": color(255),
-        "s": color(255, 195, 170),
-        "b": color(12, 77, 240),
-    };
-    // draw the rects if not a "-"
-    for (var rowIndex = 0; rowIndex < canvasData.length; rowIndex++) {
-        for (var columnIndex = 0; columnIndex < canvasData[rowIndex].length; columnIndex++) {
-            var currentChar = canvasData[rowIndex][columnIndex];
-            if (currentChar !== "-") {
-                noStroke();
-                fill(colorMap[currentChar]);
-                rect(x + columnIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
-            }
-        }
-    }
-}
-
-var barrelMap = [
-        "-----ssss-----",
-        "---ssMMMMss---",
-        "--sMMMMbbbMs--",
-        "-sMMMMMbbbMMs-",
-        "-sMMMMMbbbMMs-",
-        "sMbMMMMMMMMMMs",
-        "sMMbMMMMMMMMMs",
-        "sMMMbMMMMMMMMs",
-        "sMMMMbMMMMMMMs",
-        "-sMMMMbMMMMMs-",
-        "-sMMMMMbMMMMs-",
-        "--sMMMMMMMMs--",
-        "---ssMMMMss---",
-        "-----ssss-----",
-    
-];
-
-// draw the barrel
-
-function drawBarrel(x, y, pixelSize, rotation, laserProof) {
-    var canvasData = barrelMap;
-    // rotate 90 degrees clockwise however many times
-    for (var r = 0; r < rotation; r++) {
-        canvasData = rotateArray(canvasData);
-    }
-
-    var colorMap;
-    if (laserProof) {
-        // protected / laser-proof color palette (distinct)
-        colorMap = {
-            "s": color(200, 200, 255),
-            "M": color(140, 80, 200),
-            "b": color(10, 10, 80)
-        };
-    } else {
-        colorMap = {
-            "s": color(255, 195, 170),
-            "M": color(232, 142, 106),
-            "b": color(12, 77, 240)
-        };
-    }
-
-    for (var rowIndex = 0; rowIndex < canvasData.length; rowIndex++) {
-        for (var columnIndex = 0; columnIndex < canvasData[rowIndex].length; columnIndex++) {
-            var currentChar = canvasData[rowIndex][columnIndex];
-            if (currentChar !== "-") {
-                noStroke();
-                fill(colorMap[currentChar]);
-                rect(x + columnIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
-            }
-        }
-    }
-}
-
-// playing, gameover, won, title
-var gameState = "title";
-
-// holds the exploding player particles
-var particles = [];
-// key handler
-var keys = [];
-// player stuff
-var playerX = 100;
-var playerY = 440;
-var playerWidth = 45;
-var playerHeight = 48;
-var playerSpeed = 2;
-var gravity = 0.05;
-var velocityY = 0;
-var stepHeight = playerHeight / 3;
-var direction = "left";
-var animationToggle = 0;
-var climbing = false;
-var animationDelay = 5; // controls how fast animations update
-
-// Extract pixels from a canvasData frame (for explosion)
-function getPixelsFromFrame(canvasData, x, y, pixelSize, colorMap) {
-    var pixels = [];
-    for (var rowIndex = 0; rowIndex < canvasData.length; rowIndex++) {
-        for (var columnIndex = 0; columnIndex < canvasData[rowIndex].length; columnIndex++) {
-            var currentChar = canvasData[rowIndex][columnIndex];
-            if (currentChar !== "-") {
-                pixels.push({
-                    x: x + columnIndex * pixelSize,
-                    y: y + rowIndex * pixelSize,
-                    color: colorMap[currentChar]
-                });
-            }
-        }
-    }
-    // returns them
-    return pixels;
-}
-
-// the idle player position seperate so i can explode him
-var idle = [
-        "-----rrrr------",
-        "----rrrrrrrr---",
-        "----bbbbss-----",
-        "---bssbssbsss--",
-        "---bssbbssbsss-",
-        "--bbbssssbbbb--",
-        "-----sssssss---",
-        "----bbbbbb-----",
-        "---bbbbrrbb----",
-        "---bbbrrsrr----",
-        "---bbbbrrrrr---",
-        "---rbsssrrrr---",
-        "---rrssrrrrr---",
-        "---rrrr-rrr----",
-        "---bbb--bbb----",
-        "---bbbb-bbbb---",];
-
-var laserActive = false;
-var laserFramesLeft = 0;
-var laserDuration = 6;      // how many frames the laser is visible
-var pullOut = false;        // true while player is "pulling" the gun
-var pullTimer = 0;
-var pullDuration = 20;      // frames required to pull the gun out (adjustable)
-var shootCooldown = 0;      // frames until next pull can start
-var barrelParticles = [];   // particles for exploding barrels
-
-function drawPlayer(x, y, pixelSize) {
-    var canvasData = [];
-    if (animationToggle === 0) {
-        canvasData = idle;
-    } else if(animationToggle === 1) {
-        canvasData = [
-            "-----rrrr------",
-            "----rrrrrrrr---",
-            "----bbbbss-----",
-            "---bssbssbsss--",
-            "---bssbbssbsss-",
-            "--bbbssssbbbb--",
-            "-----sssssss---",
-            "--bbbbrrbb---ss",
-            "ssbbbbrrrbbbsss",
-            "sss-bbrsrrrbbss",
-            "ss--rrrrrrr--b-",
-            "---rrrrrrrrrbb-",
-            "--rrrrrrrrrrbb-",
-            "-bbbrr---rrrbb-",
-            "-bbb-----------",
-            "--bbb----------",
-        ];
-    } else if(animationToggle === 2) {
-        canvasData = [
-            "-----rrrr------",
-            "----rrrrrrrr---",
-            "----bbbbss-----",
-            "---bssbssbsss--",
-            "---bssbbssbsss-",
-            "--bbbssssbbbb--",
-            "-----sssssss---",
-            "----bbbbbr-s---",
-            "---sbbbbbbsss--",
-            "--ssrrbbbbss---",
-            "bbrrrrrrrrrr---",
-            "bbrrrrrrrrrr---",
-            "bbrrrr--rrr----",
-            "b------bbb-----",
-            "-------bbbb----",
-        ];
-    } else if(animationToggle === 3) {
-        canvasData = [
-            "------rrrr---sss",
-            "-----rrrrrrrrsss",
-            "-----bbbbss--bbb",
-            "----bssbssbsssbb",
-            "----bssbbssbsssb",
-            "---bbbssssbbbbb-",
-            "------sssssssb--",
-            "--bbbbbrbbbrb---",
-            "-bbbbbbbrbbbr--b",
-            "ssbbbbbbrrrrr--b",
-            "sss-rrbrrsrrsrbb",
-            "-s-brrrrrrrrrrbb",
-            "--bbbrrrrrrrrrbb",
-            "-bbbrrrrrrr-----",
-            "-b--rrrr--------",
-        ];
-    }
-    else if(animationToggle === 4) {
-        canvasData = [
-        "-----rrrr------",
-        "----rrrrrrrr---",
-        "----bbbbss-----",
-        "---bssbssbsss--",
-        "---bssbbssbsss-",
-        "--bbbssssbbbb--",
-        "-----sssssss---",
-        "----bbbbbb---ss",
-        "---bbbbrrbbbsss",
-        "---bbbrrsrrbbss",
-        "---bbbbrrrrr---",
-        "---rbsssrrrr---",
-        "---rrssrrrrr---",
-        "---rrrr-rrr----",
-        "---bbb--bbb----",
-        "---bbbb-bbbb---",
-        ];
-    }
-
-    if (direction === "left") {
-        canvasData = flipArray(canvasData);
-    }
-
-    var colorMap = {
-        "r": color(255, 0, 0),
-        "b": color(12, 35, 240),
-        "s": color(255, 195, 170),
-    };
-
-    for (var rowIndex = 0; rowIndex < canvasData.length; rowIndex++) {
-        for (var columnIndex = 0; columnIndex < canvasData[rowIndex].length; columnIndex++) {
-            var currentChar = canvasData[rowIndex][columnIndex];
-            if (currentChar !== "-") {
-                noStroke();
-                fill(colorMap[currentChar]);
-                rect(x + columnIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
-            }
-        }
-    }
-}
-
-// trusses and ladder positions
-var trusses = [
-    {x: 0, y: 590, pixelSize: 5, length: 8},
-    {x: 130, y: 440, pixelSize: 5, length: 2},
-    {x: 260, y: 430, pixelSize: 5, length: 2},
-    {x: 390, y: 420, pixelSize: 5, length: 2},
-    {x: 520, y: 410, pixelSize: 5, length: 2},
-    {x: 0, y: 300, pixelSize: 5, length: 7},
-    {x: 100, y: 180, pixelSize: 5, length: 8},
-    {x: 0, y: 30, pixelSize: 5, length: 7},
-    {x: 130, y: -140, pixelSize: 5, length: 2},
-    {x: 260, y: -130, pixelSize: 5, length: 2},
-    {x: 390, y: -120, pixelSize: 5, length: 2},
-    {x: 520, y: -110, pixelSize: 5, length: 2},
-    {x: 0, y: -300, pixelSize: 5, length: 8},
-    {x: 100, y: -500, pixelSize: 5, length: 8},
-    {x: 0, y: -700, pixelSize: 5, length: 8},
-    {x: 100, y: -1040, pixelSize: 5, length: 8},
-];
-
-var ladders = [
-    {x: 420, y: 310, pixelSize: 5, h: 6},
-    {x: 120, y: 190, pixelSize: 5, h: 6},
-    {x: 140, y: 450, pixelSize: 5, h: 7},
-    {x: 410, y: 45, pixelSize: 5, h: 7},
-    {x: 150, y: -125, pixelSize: 5, h: 8},
-    {x: 475, y: -290, pixelSize: 5, h: 8},
-    {x: 125, y: -490, pixelSize: 5, h: 9},
-    {x: 465, y: -690, pixelSize: 5, h: 9},
-    {x: 125, y: -1030, pixelSize: 5, h: 16},
-    
-];
-
-// handles ladder collisions
-function handleLadders() {
-    // we want to climb when player is in center, not the corner
-    var playerCenterX = playerX + playerWidth / 2;
-
-    for (var i = 0; i < ladders.length; i++) {
-        var l = ladders[i];
-        var ladderWidth = 6 * l.pixelSize;
-        var ladderHeight = l.h * (4.33 * l.pixelSize);
-
-        if (playerCenterX > l.x && playerCenterX < l.x + ladderWidth &&
-            playerY + playerHeight >= l.y && playerY <= l.y + ladderHeight) {
-                // up to climb up
-            if (keys[UP] || keys[87]) {
-                playerY -= 2;
-                velocityY = 0;
-                climbing = true;
-            } 
-        }
-    }
-}
-
-var kittyDirection = "right";
-function drawPeach(x, y, pixelSize) {
-    var canvasData = [
-        "uu----uuu------",
-        "ubu--ubbu------",
-        "ubcuucbbu------",
-        "ufcwcfffu------",
-        "ufwwffffu------",
-        "uwewfeffu---uu-",
-        "uwewweffu--uffu",
-        "uwwpwwwwuu-ufuu",
-        "uwwwwwwuffuffu-",
-        "-uwwwwwwwwfuu--",
-        "--uwwwwwwwwu---",
-        "--uwuwuwwuwu---",
-        "--uwuwuuuuwu---",
-        "--uuuuu-uuuu---",
-    ];
-    if (kittyDirection === "left") {
-        canvasData = flipArray(canvasData);
-    }
-    var colorMap = {
-        // used reference found on google to make this cat
-        "w": color(255),
-        "p": color(-681849),
-        "f": color(-5012433),
-        "b": color(-1127247),
-        "c": color(-10461088),
-        "u": color(48, 48, 48),
-        "e": color(-13687030),
-    };
-    for (var rowIndex = 0; rowIndex < canvasData.length; rowIndex++) {
-        for (var columnIndex = 0; columnIndex < canvasData[rowIndex].length; columnIndex++) {
-            var currentChar = canvasData[rowIndex][columnIndex];
-            if (currentChar !== "-") {
-                noStroke();
-                fill(colorMap[currentChar]);
-                rect(x + columnIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
-            }
-        }
-    }
-}
-
-// starting barrels positions
-var barrels = [
-    {x: 120, y: 250, pixelSize: 3.5, velocityX: 3, velocityY: 0, rotation: 0},
-    {x: 210, y: 150, pixelSize: 3.5, velocityX: 4.5, velocityY: 0, rotation: 0},
-    {x: 330, y: 50, pixelSize: 3.5, velocityX: 6, velocityY: 0, rotation: 0},
-    {x: 440, y: -150, pixelSize: 3.5, velocityX: 4.6, velocityY: 0, rotation: 0},
-    {x: 530, y: -250, pixelSize: 3.5, velocityX: 5, velocityY: 0, rotation: 0},
-    {x: 530, y: -350, pixelSize: 3.5, velocityX: 4.314159, velocityY: 0, rotation: 0},
-    {x: 530, y: -450, pixelSize: 3.5, velocityX: 4.2, velocityY: 0, rotation: 0},
-    {x: 530, y: -550, pixelSize: 3.5, velocityX: 4.6, velocityY: 0, rotation: 0},
-    
-];
-// barrels seperate gravity
-var barrelGravity = 0.4;
-// how fast they rotate (lower = faster)
-var barrelAnimationDelay = 9;
-
-// Returns the idle player frame (for explosion only)
-function getIdlePlayerFrame() {
-    var canvasData = idle;
-
-    var colorMap = {
-        "r": color(255, 0, 0),
-        "b": color(12, 35, 240),
-        "s": color(255, 195, 170),
-    };
-
-    return { canvasData: canvasData, colorMap: colorMap };
-}
-// start the game over stuff
-function triggerGameOver() {
-    gameState = "gameover";
-    particles = [];
-    
-    var frame = getIdlePlayerFrame();
-    var framePixels = getPixelsFromFrame(frame.canvasData, playerX, playerY, 3, frame.colorMap);
-
-    for (var i = 0; i < framePixels.length; i++) {
-        var fp = framePixels[i];
-        // KABOOM
-        particles.push({
-            x: fp.x,
-            y: fp.y,
-            vx: random(-4, 4),
-            vy: random(-8, -3),
-            color: fp.color
-        });
-        // one wasn't enough KABOOM AGAIN
-        particles.push({
-            x: fp.x,
-            y: fp.y,
-            vx: random(-4, 4),
-            vy: random(-8, -3),
-            color: fp.color
-        });
-    }
-}
-// handles the barrels
-function handleBarrels() {
-    for (var i = 0; i < barrels.length; i++) {
-        var b = barrels[i];
-
-        // Apply gravity
-        b.velocityY += barrelGravity;
-        b.y += b.velocityY;
-        b.x += b.velocityX;
-
-        // Bounce off walls
-        if (b.x <= 0 || b.x >= 600 - 11 * b.pixelSize) {
-            b.velocityX *= -1;
-        }
-
-        // Stair-step logic
-        var barrelBottom = b.y + 11 * b.pixelSize;
-        var bestGround = null;
-
-        for (var j = 0; j < trusses.length; j++) {
-            var t = trusses[j];
-            var trussWidth = t.length * 13 * t.pixelSize;
-            var trussTop = t.y;
-
-            var overlapX = (b.x + 11*b.pixelSize > t.x) && (b.x < t.x + trussWidth);
-            if (!overlapX) {continue;}
-
-            var diff = trussTop - barrelBottom;
-
-            // Check if barrel is within half a step of trusss
-            var stepHeight = 11 * b.pixelSize / 2; 
-            if (diff >= -stepHeight && diff <= stepHeight) {
-                if (!bestGround || trussTop < bestGround) {
-                    bestGround = trussTop;
-                }
-            }
-        }
-
-        if (bestGround !== null) {
-            b.y = bestGround - 11 * b.pixelSize;
-            b.velocityY = 0;
-        }
-
-        // rotation
-        if (frameCount % barrelAnimationDelay === 0) {
-            b.rotation = (b.rotation + 1) % 4;
-        }
-
-drawBarrel(b.x, b.y, b.pixelSize, b.rotation, b.laserProof);
-
-// Remove barrels that fell too far
-if (b.y > playerY + 650) {
-    barrels.splice(i, 1);
-    i--; 
-    continue; 
-}
-
-
-
-var barrelRadius = 5.5 * b.pixelSize; 
-var barrelCenterX = b.x + barrelRadius;
-var barrelCenterY = b.y + barrelRadius;
-
-var playerCenterX = playerX + playerWidth / 2;
-var playerCenterY = playerY + playerHeight / 2;
-
-var dx = barrelCenterX - playerCenterX;
-var dy = barrelCenterY - playerCenterY;
-var distance = Math.sqrt(dx*dx + dy*dy);
-
-var combinedRadius = barrelRadius + Math.min(playerWidth, playerHeight)/3;
-
-if (distance < combinedRadius) {
-    if (distance < combinedRadius && gameState === "playing") {
-        // Kill player
-     triggerGameOver();
-}
-
-}
-
-    }
-}
-
-
-// Explode a barrel at index 'idx' in the barrels array
-function explodeBarrel(idx) {
-    var br = barrels[idx];
-
-    var barrelData = barrelMap;
-    var barrelColorMap;
-    if (br && br.laserProof) {
-        barrelColorMap = {
-            "s": color(200, 200, 255),
-            "M": color(140, 80, 200),
-            "b": color(10, 10, 80)
-        };
-    } else {
-        barrelColorMap = {
-            "s": color(255, 195, 170),
-            "M": color(232, 142, 106),
-            "b": color(12, 77, 240)
-        };
-    }
-
-    // get pixel list from the barrel frame and spawn particles
-    var pixels = getPixelsFromFrame(barrelData, br.x, br.y, br.pixelSize, barrelColorMap);
-
-    for (var p = 0; p < pixels.length; p++) {
-        var fp = pixels[p];
-        barrelParticles.push({
-            x: fp.x,
-            y: fp.y,
-            vx: random(-4, 4),
-            vy: random(-8, -2),
-            color: fp.color,
-            life: round(random(40, 80))
-        });
-    }
-
-    // remove the barrel from the world
-    barrels.splice(idx, 1);
-}
-
-function fireLaser() {
-    // Laser fires instantly across the screen in the player's facing direction
-    laserActive = true;
-    
-    laserFramesLeft = laserDuration;
-
-    // determine laser line and check barrels
-    var laserY = playerY + playerHeight / 2;
-    var playerFrontX = (direction === "left") ? playerX : (playerX + playerWidth);
-
-    for (var i = barrels.length - 1; i >= 0; i--) {
-        var br = barrels[i];
-        // center of barrel
-        var barrelRadius = 5.5 * br.pixelSize;
-        var bx = br.x + barrelRadius;
-        var by = br.y + barrelRadius;
-
-        // check approximate vertical overlap (tolerance tuned to pixel art)
-        var verticalTolerance = 12 * br.pixelSize;
-        var inVerticalRange = Math.abs(by - laserY) <= verticalTolerance;
-
-        // check that barrel is in the direction of the laser
-        var inDirection = (direction === "right") ? (bx > playerFrontX) : (bx < playerFrontX);
-
-                if (inVerticalRange && inDirection) {
-            // explode only if not laser-proof
-            if (!br.laserProof) {
-                explodeBarrel(i);
-            } else {
-for (var s = 0; s < 20; s++) {
-    barrelParticles.push({
-        x: bx + random(-6, 6),
-        y: by + random(-6, 6),
-        vx: random(-3, 3),
-        vy: random(-6, -1),
-        color: color(255, 180 + random(-30,30), 80),
-        life: round(random(18, 36))
-    });
-}
-
-                
-            }
-        }
-
-    }
-}
-
-// the camera stuff
-var cameraY = 0; 
-var cameraSmooth = 0.1; 
-
-// current ground and best step up
-var currentGround = 550;
-var bestStep = null;
-
-// to make him fall
-function computePlayerGround() {
-    var playerBottom = playerY + playerHeight;
-    var bestGround = null; 
-    for (var j = 0; j < trusses.length; j++) {
-        var t = trusses[j];
-        var trussWidth = t.length * 13 * t.pixelSize;
-        var trussTop = t.y;
-
-        var overlapX = (playerX + playerWidth > t.x) && (playerX < t.x + trussWidth);
-        if (!overlapX) { continue; }
-
-
-        var diff = trussTop - playerBottom;
-
-        var stepTolerance = stepHeight; // you already have 
-        if (playerBottom <= trussTop + 5 && velocityY >= 0) {
-            var candidate = trussTop - playerHeight;
-            if (bestGround === null || candidate < bestGround) { 
-                bestGround = candidate;
-            }
-        }
-
-        else if (diff >= -stepTolerance && diff <= stepTolerance) {
-            var candidate = trussTop - playerHeight;
-            if (bestGround === null || candidate < bestGround) {
-                bestGround = candidate;
-            }
-        }
-    }
-
-    return bestGround; // null if nothing close enough
-}
-
-
-function drawPixelRing(cx, cy, radius, px, segments, progress, activeColor, bgColor) {
-
-    segments = segments || 24;
-    for (var i = 0; i < segments; i++) {
-        var angle = (i / segments) * Math.PI * 2 - Math.PI/2; // start at top
-        var sx = Math.round(cx + Math.cos(angle) * radius);
-        var sy = Math.round(cy + Math.sin(angle) * radius);
-
-        var litCount = Math.round(progress * segments);
-        var lit = (i < litCount);
-
-        noStroke();
-        if (lit) {
-            fill(activeColor[0], activeColor[1], activeColor[2]);
-        } else {
-            fill(bgColor[0], bgColor[1], bgColor[2]);
-        }
-        // draw a small block centered at the computed pixel spot
-        rect(sx - px/2, sy - px/2, px, px);
-    }
-}
-
-function drawLaserIndicator() {
-    var cx = Math.round(playerX + playerWidth / 2);
-    var cy = Math.round(playerY - 26); 
-
-    var baseRadius = 22;
-    var px = 3;            // pixel block size used for ring
-    var segments = 28;     // number of blocks around the circle
-
-
-    // If currently pulling the gun: animate shrink/grow and show fill progress
-    if (pullOut) {
-        var elapsed = pullDuration - pullTimer;      // 0..pullDuration
-        var progress = Math.max(0, Math.min(1, elapsed / pullDuration)); // 0..1 fill
-
-        // oscillate radius while pulling (shrinks & grows)
-        var oscillation = Math.sin((elapsed / Math.max(1, pullDuration)) * Math.PI * 2); 
-        var radius = baseRadius * (1 - 0.18 * oscillation); // ±18% oscillation
-
-        drawPixelRing(cx, cy, radius, px, segments, progress, [250, 210, 40], [250, 210, 40]);
-
-        return;
-    }
-
-    // If on cooldown: draw partially filled gray -> green as it charges back up
-    if (shootCooldown > 0) {
-        var readyRatio = 1 - (shootCooldown / 120); // 0..1
-        drawPixelRing(cx, cy, baseRadius, px, segments, readyRatio, [120,200,80], [60,60,60]);
-
-        return;
-    }
-
-    // Otherwise: fully ready (green ring)
-    drawPixelRing(cx, cy, baseRadius, px, segments, 1.0, [120,200,80], [40,40,40]);
-
-}
-
-function resetGame() {
-    // reset player
-    gameState = "playing";
-    playerX = 100;
-    playerY = 440;
-    playerWidth = 45;
-    playerHeight = 48;
-    playerSpeed = 2;
-    gravity = 0.05;
-    velocityY = 0;
-    direction = "left";
-    animationToggle = 0;
-    climbing = false;
-
-    // timers/flags
-    deathTimer = 0;
-    winTimer = 0;
-    laserActive = false;
-    laserFramesLeft = 0;
-    pullOut = false;
-    pullTimer = 0;
-    shootCooldown = 0;
-    dancing = false;
-
-    // clear / reset particles
-    particles = [];
-    dkParticles = [];
-    barrelParticles = [];
-
-    // reset camera
-    cameraY = 0;
-
-    barrels = [
-        {x: 120, y: 250, pixelSize: 3.5, velocityX: 3, velocityY: 0, rotation: 0},
-        {x: 210, y: 150, pixelSize: 3.5, velocityX: 4.5, velocityY: 0, rotation: 0},
-        {x: 330, y: 50, pixelSize: 3.5, velocityX: 6, velocityY: 0, rotation: 0},
-        {x: 440, y: -150, pixelSize: 3.5, velocityX: 4.6, velocityY: 0, rotation: 0},
-        {x: 530, y: -250, pixelSize: 3.5, velocityX: 5, velocityY: 0, rotation: 0},
-        {x: 530, y: -350, pixelSize: 3.5, velocityX: 4.314159, velocityY: 0, rotation: 0},
-        {x: 530, y: -450, pixelSize: 3.5, velocityX: 4.2, velocityY: 0, rotation: 0},
-        {x: 530, y: -550, pixelSize: 3.5, velocityX: 4.6, velocityY: 0, rotation: 0},
-    ];
-    for (var i = 0; i < barrels.length; i++) {
-        barrels[i].laserProof = (random() < 0.2);
-    }
-
-    // reset DK direction and related
-    DKdirection = "left";
-}
-
-// tweakable UI appearance (: (: (:
-var titleButtons = [
-  // edit x,y,w,h,label and action to customize
-  { label: "Play", x: 180, y: 260, w: 240, h: 72, action: function(){ gameState = "playing"; resetGame(); } },
-  { label: "How",  x: 180, y: 350, w: 240, h: 72, action: function(){ gameState = "how"; } },
-
-];
-
-var titleFontSize = 62;
-var titleSubFontSize = 22;
-
-// helper: draw a single button in screen-space
-function drawButton(btn, mx, my) {
-    var isHover = (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h);
-    // outline / background
-    noStroke();
-    if (isHover) {
-        fill(90, 160, 255, 240);
-        rect(btn.x-4, btn.y-4, btn.w+8, btn.h+8, 8); // glow/backplate
-    }
-    // main button
-    fill(40, 50, 80, 230);
-    rect(btn.x, btn.y, btn.w, btn.h, 8);
-    // label
-    textSize(26);
-    textAlign(CENTER, CENTER);
-    fill(230);
-    text(btn.label, btn.x + btn.w/2, btn.y + btn.h/2);
-}
-
-// title screen UI
-function drawTitleScreenUI() {
-    // undo camera transform so mouseX/mouseY match screen coords
-    // i could have popped it earlier but oh well
-    pushMatrix();
-    translate(0, -round(cameraY));
-
-    // dim background
-    noStroke();
-    fill(10, 10, 20, 220);
-    rect(-50, -50, width*2, height*2);
-
-    // title text
-    textAlign(CENTER, CENTER);
-    textSize(titleFontSize);
-    fill(250, 210, 40);
-    text("DONKEY KHAN", width / 2, height / 6);
-    
-    drawPeach(width/1.4, height/3, 10);
-    animationToggle = 3;
-    direction = "right";
-    drawPlayer(width/40, height/1.8, 8);
-    drawDK(width/1.5, height/1.4, 4); 
-    // subtitle
-    textSize(titleSubFontSize);
-    fill(230);
-    text("Arrow Keys to move\nAvoid Barrels\nSave your pet cat Peach", width/2, height/3.2);
-
-    // draw buttons
-    var mx = mouseX;
-    var my = mouseY;
-    for (var i = 0; i < titleButtons.length; i++) {
-        drawButton(titleButtons[i], mx, my);
-    }
-
-    // small hint for people like digits
-    textSize(14);
-    fill(200,220,200);
-    text("- click a button -", width/2, height - 36);
-
-    popMatrix();
-}
-
-// how screen
-function drawHowScreenUI() {
-    pushMatrix();
-    translate(0, -round(cameraY));
-
-    noStroke();
-    fill(6, 12, 30, 230);
-    rect(0, 0, width, height);
-
-    textAlign(CENTER, TOP);
-    textSize(40);
-    fill(220);
-    text("HOW TO PLAY", width/2, 48);
-
-    textSize(18);
-    fill(210);
-    var lines = [
-        "Move with LEFT and RIGHT arrow keys, jump with UP.",
-        "Climb ladders by centering on them and pressing UP.",
-        "Press SPACE to pull out your laser cannon.",
-        "Higher you climb -> more barrels spawn.",
-        "Some barrels are laser-proof (purple) and won't explode to lasers."
-    ];
-    var yBase = 120;
-    for (var i = 0; i < lines.length; i++) {
-        text(lines[i], width/2, yBase + i * 28);
-    }
-
-    // single Back button
-    var backBtn = { x: width/2 - 100, y: height - 120, w: 200, h: 56, label: "Back", action: function(){ gameState = "title"; } };
-    drawButton(backBtn, mouseX, mouseY);
-    
-    drawBarrel(20, 380, 10, 0, true);
-    drawBarrel(430, 280, 10, 0);
-    direction = "right";
-    drawPlayer(230, 300, 10);
-    
-    popMatrix();
-}
-
-
-// draw function
-draw = function() {
-    
-    // translate based on the camera
-    translate(0, round(cameraY));
-    
-    // background
-    background(0);
-       if (shootCooldown > 0) {
-        shootCooldown--;
-    }
-
-    // handle laser lifetime
-    if (laserActive) {
-        laserFramesLeft--;
-        if (laserFramesLeft <= 0) {
-            laserActive = false;
-        }
-    }
-
-    // update barrel explosion particles (place with other particle updates)
-    for (var bp = barrelParticles.length - 1; bp >= 0; bp--) {
-        var part = barrelParticles[bp];
-        part.x += part.vx;
-        part.y += part.vy;
-        part.vy += 0.25; // gravity
-        part.life--;
-        noStroke();
-        fill(part.color);
-        rect(part.x, part.y, 3, 3);
-
-        if (part.life <= 0 || part.y > 800) {
-            barrelParticles.splice(bp, 1);
-        }
-    }
-
-
-    // camera target
-    var targetY = -playerY + 380;
-    cameraY += (targetY - cameraY) * cameraSmooth; 
-    pushMatrix();
-        // climbing is false
-        climbing = false;
-        // handles ladder collision
-        handleLadders();
-        // sets the best ground 
-        var groundCandidate = computePlayerGround();
-          if (!climbing) {
-              // if we not climbing then apply gravity
-                velocityY += gravity*2;
-                playerY += velocityY*2;
-            } else {
-                // otherwise there is none
-                velocityY = 0;
-            }
-            // more ground stuff
-            if (groundCandidate !== null) {
-                if (playerY >= groundCandidate) {
-                    playerY = groundCandidate;
-                    velocityY = 0;
-                }
-            }
-    
-// only move if not shooting
-if (!pullOut) {
-    if (keys[LEFT] || keys[65]) {
-        direction = "left";
-        playerX -= playerSpeed;
-    } else if (keys[RIGHT] || keys[68]) {
-        direction = "right";
-        playerX += playerSpeed;
-    }
-    if ((keys[UP] || keys[87]) && groundCandidate !== null && playerY >= groundCandidate) {
-        velocityY = -2.2;
-    }
-} else {
-
-    animationToggle = 0; 
-}
-
-        
-        if (frameCount % (animationDelay*5) === 0) {
-        if (DKdirection === "left") {
-            DKdirection = "right";
-        } else if (DKdirection === "right") {
-            DKdirection = "left";
-        }
-        
-    }
-    var maxEffectiveHeight = 1200;
-var baseSpawnChance = 0.004;
-var extraSpawnMax = 0.0267; 
-
-var heightFactor = Math.min(1, Math.max(0, (-playerY) / maxEffectiveHeight)); // 0..1
-var spawnChancePerFrame = baseSpawnChance + heightFactor * extraSpawnMax;
-
-if (random() < spawnChancePerFrame && gameState === "playing") {
-    var isLaserProof = (random() < 0.2); // 20% chance
-    barrels.push({
-        x: random(100, 500),
-        y: playerY - 500,
-        pixelSize: 3.5,
-        velocityX: random(2, 6),
-        velocityY: 0,
-        rotation: 0,
-        laserProof: isLaserProof
-    });
-}
-    
-    
-        // ladders behind truss
-        for (var j = 0; j < ladders.length; j++) {
-            drawLadder(ladders[j].x, ladders[j].y, ladders[j].pixelSize, ladders[j].h);
-        }
-        // truss after ladders
-        for (var i = 0; i < trusses.length; i++) {
-            drawTruss(trusses[i].x, trusses[i].y, trusses[i].pixelSize, trusses[i].length);
-        }
-        // if you are at the top you win and the code should know that
-        if(playerY < -1100){
-            gameState = "won";
-        }
-        stroke(255);
-        strokeWeight(1);
-        line(0, -1200, 0, -1200);
-        
-    // draw mr kong
-        if (winTimer <= 60) {
-        drawDK(290, -1200, 5);
-        
-        drawPeach(520, -1110, 5);
-        handleBarrels();
-    
-
-
-    
-    // ground stuff    
-    var grounded = false;
-    var groundEpsilon = 1; 
-    
-    if (climbing) {
-        grounded = true; 
-    }
-    
-    if (!grounded && groundCandidate !== null && playerY >= groundCandidate - groundEpsilon) {
-        grounded = true;
-    }
-    if (laserActive && gameState === "playing") {
-    var ly = playerY + playerHeight / 2;
-    var lx1 = (direction === "left") ? playerX : (playerX + playerWidth/2);
-    var lx2 = (direction === "left") ? -200 : (width + 200);
-
-    strokeWeight(4);
-    stroke(200, 20, 20);
-    line(lx1, ly, lx2, ly);
-    // small glow
-    strokeWeight(2);
-    stroke(255, 120, 120);
-    line(lx1, ly, lx2, ly);
-    noStroke();
-}
-    // Set animation based on grounded + input
-    if (!grounded) {
-        animationToggle = 3;
-    } else {
-        // on ground: walking or idle
-        if (keys[LEFT] || keys[RIGHT] || keys[68] || keys[65]) {
-            if (frameCount % animationDelay === 0) {
-                animationToggle++;
-            }
-            if (animationToggle > 2 || animationToggle < 0) {
-                animationToggle = 0;
-            }
-        } else {
-            animationToggle = 0; // idle
-        }
-    }
-    
-    
-    // handle pull-out timer (locks movement while pulling)
-    if (pullOut) {
-        pullTimer--;
-        animationToggle = 4;
-        if (pullTimer <= 0) {
-            pullOut = false;
-            fireLaser();
-            // NOTE: by design, movement is unlocked the moment the laser fires
-        }
-    }
-    
-    
-        }
-        playerX = constrain(playerX, 0, width-45);
-        if(gameState === "playing") {
-            drawLaserIndicator();
-        drawPlayer(playerX, playerY, 3);
-        }
-        else if (gameState === "gameover") {
-        deathTimer ++;
-        // update and draw particles for exploding dk
-        for (var i = 0; i < particles.length; i++) {
-            var p = particles[i];
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += 0.2; // gravity
-    
-            noStroke();
-            fill(p.color);
-            rect(p.x, p.y, 4, 4);
-        }
-    
-    
-        // if you dead for long enough then restart the program
-        if (deathTimer > 100) {
-            // just this works on windows & safari
-            resetGame();
-        }
-        }
-        // when you win
-        else if (gameState === "won") {
-            // lock player y onto the top platform
-        playerY = -1088;
-        // hes idle if not yet dancing
-        if(winTimer < 60){
-        animationToggle = 0;
-        }
-        // yay hes dancing
-        else {
-            if(winTimer % 30 === 0) {
-                animationToggle ++;
-            }
-        }
-        if(animationToggle === 3) {
-            animationToggle = 1;
-        }
-        // draw him
-        drawPlayer(playerX, playerY, 3);
-        // add to win timer
-        winTimer++;
-        
-        //  60 frames, trigger DK explosion
-        if (winTimer === 60) {
-            var dkFrame = dkIdle;
-            
-            // repeat color map for kong
-            var dkColorMap = {
-                "r": color(199, 0, 40),
-                "w": color(255),
-                "s": color(255, 195, 170),
-                "b": color(12, 77, 240),
-            };
-            
-            dkParticles = getPixelsFromFrame(dkFrame, 290, -1200, 5, dkColorMap);
-            dancing = true;
-        }
-    
-        // Update DK explosion particles
-        for (var i = 0; i < dkParticles.length; i++) {
-            var p = dkParticles[i];
-            if (!p.vx) {
-                p.vx = random(-4, 4);
-                p.vy = random(-8, -3);
-            }
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += 0.2; // gravity
-    
-            noStroke();
-            fill(p.color);
-            rect(p.x, p.y, 4, 4);
-        }
-    
-        // Dancing & text 
-        if (dancing) {
-            textSize(60);
-            textAlign(CENTER, CENTER);
-            fill(200, 255, 0);
-            text("PEACH IS SAVED!", 300, -1300);
-            textSize(40);
-            fill(233, 240, 204);
-            text("DANCE PARTY!", 300, -1250);
-            textSize(20);
-            text("- click to play again -", 300, -1200);
-            // switch their dirrections
-            if (frameCount % 30 === 0) {
-                direction = (direction === "left") ? "right" : "left";
-                kittyDirection = (kittyDirection === "left") ? "right" : "left";
-            }
-            // draw player and peach
-            drawPlayer(playerX, playerY, 3);
-            drawPeach(520, -1110, 5);
-        }
-    
-
-    }
-    // draw title / how screens on top
-if (gameState === "title") {
-    drawTitleScreenUI();
-} else if (gameState === "how") {
-    drawHowScreenUI();
-}
-
-        popMatrix();
-};
-
-// mouse input
-mouseClicked = function() {
-    // If on title/how screens: check buttons in screen coordinates
-    if (gameState === "title") {
-        for (var i = 0; i < titleButtons.length; i++) {
-            var b = titleButtons[i];
-            if (mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h) {
-                if (typeof b.action === "function") { b.action(); }
-                return;
-            }
-        }
-    } else if (gameState === "how") {
-        // Back button region: (matches drawHowScreenUI's back button)
-        var bx = width/2 - 100, by = height - 120, bw = 200, bh = 56;
-        if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
-            gameState = "title";
-            return;
-        }
-    } else if (gameState === "gameover" || gameState === "won") {
-        resetGame();
-    }
-};
-
-// key input
-keyPressed = function() {
-    keys[keyCode] = true;
-
-    // SPACE
-    if (keyCode === 32 && shootCooldown <= 0 && gameState === "playing" && !pullOut && !laserActive) {
-        // begin pull-out; movement locked until pullTimer reaches 0
-        pullOut = true;
-        pullTimer = pullDuration;
-        shootCooldown = 120; 
-    }
-};
-
-keyReleased = function() {
-    keys[keyCode] = false;
-};
-
+</script>	
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<title>Donkey Khan pi edition</title>
+	<style>
+		
+		
+		/* Change the color as you want */
+		:root {
+			--background-color: #000000;
+		}
+		
+		
+		html, body, #wrapper {
+			overflow: hidden;
+			width: 100%;
+		    height: 100%;
+			margin: 0px;
+			padding: 0px;
+		    width: calc(100% + 1px);
+		}
+		
+		body {
+		    background-color: var(--background-color);
+		}
+		
+		
+		canvas {
+			width: fit-content;
+			height: fit-content;
+		}
+		
+		canvas:focus {
+			outline: none;
+		}
+		
+		/* Automatically fits to the remaining height and centers the canvas it contains */
+		#wrapper {
+			padding: 0px;
+			margin: 0px;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			width: 100%;
+		}
+		
+</style>
+</head>
+<body id="wrapper">
+    <!-- Canvases with a class of "sketch" are applied to the program in the order runPJS() is called. -->
+    <canvas class="sketch"></canvas>
+	<!-- Load the PJS library -->
+	<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/Khan/processing-js@master/processing.js"></script>
+	<!-- The exporter script must be loaded before the program script -->
+	<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/Mushy-Avocado/KA-exporter@v1.0.1/exporter.js"></script>
+	<!-- Run Khan Academy program and import PJS -->
+	<script type="application/javascript">
+		
+		
+		function program() {
+		    
+		    title("Donkey Khan pi edition");
+		    size(600, 600);
+		    
+		    // All code goes here
+			
+			
+			// Utility code for DK converter. It can also draw normal pixel arts, at an optimized speed. [
+			
+			// Convert your own images/gifs at: https://digitsandkineto.com
+			
+			// stores cached pixel art graphics buffers
+			var _pixelArtCache = {};
+			
+			// is it an array?
+			function isArray(a) {
+			    return Array.isArray(a);
+			}
+			
+			// is it a PImage or similar object?
+			function isPImage(obj) {
+			    if (!obj) { return false; }
+			    try {
+			        return (typeof obj.width === "number") || (typeof obj.get === "function");
+			    } catch (e) {
+			        return false;
+			    }
+			}
+			
+			// is it an RLE frame (array of strings)?
+			function isRLEFrame(frame) {
+			    return isArray(frame) && frame.length > 0 && typeof frame[0] === "string";
+			}
+			
+			// build a cache key for pixel art rendering
+			function buildCacheKey(data, frameIndex, pixelSize, colorMap) {
+			    var prefix = "";
+			    try {
+			        prefix = JSON.stringify(data);
+			    } catch (e) {
+			        prefix = String(data);
+			    }
+			
+			    var cmap = "";
+			    try {
+			        cmap = JSON.stringify(colorMap);
+			    } catch (e2) {
+			        cmap = String(colorMap);
+			    }
+			
+			    return prefix + "|" + String(frameIndex) + "|" + String(pixelSize) + "|" + cmap;
+			}
+			
+			// Clear the entire pixel art cache
+			function clearPixelArtCache() {
+			    _pixelArtCache = {};
+			}
+			
+			// Invalidate a specific pixel art cache entry
+			function invalidatePixelArtCacheFor(data, frameIndex, pixelSize, colorMap) {
+			    var key = buildCacheKey(data, frameIndex, pixelSize, colorMap);
+			    if (_pixelArtCache[key]) {
+			        delete _pixelArtCache[key];
+			    }
+			}
+			
+			// Decode a single RLE row string into an array of characters
+			function decodeRLERow(row) {
+			    var out = [];
+			    if (!row) { return out; }
+			    var i = 0;
+			    var n = row.length;
+			
+			    while (i < n) {
+			        var ch = row.charAt(i);
+			
+			        // skip digits (should not happen at this point)
+			        if (ch >= '0' && ch <= '9') {
+			            i++;
+			            continue;
+			        }
+			
+			        // advance past the char
+			        i++;
+			        // collect digits (if any) to form the count
+			        var numStr = "";
+			        while (i < n) {
+			            var d = row.charAt(i);
+			            if (d < '0' || d > '9') { break; }
+			            numStr += d;
+			            i++;
+			        }
+			
+			        var count = numStr.length ? parseInt(numStr, 10) : 1;
+			
+			        for (var k = 0; k < count; k++) {
+			            out.push(ch);
+			        }
+			    }
+			
+			    return out;
+			}
+			
+			// Decode an RLE image (array of RLE row strings) into a 2D array of characters
+			function decodeRLEImage(lines) {
+			    var pixels = [];
+			    for (var y = 0; y < lines.length; y++) {
+			        pixels[y] = decodeRLERow(lines[y] || "");
+			    }
+			    return pixels;
+			}
+			
+			// Check if a frame has any visible color based on the color map
+			function frameHasVisibleColor(frameData, colorMap) {
+			    if (!frameData) { return false; }
+			    for (var i = 0; i < frameData.length; i++) {
+			        var row = frameData[i];
+			        if (!row) { continue; }
+			        // check each character in the row
+			        for (var k = 0; k < row.length; k++) {
+			            var ch = row[k];
+			            if (ch !== "-" && colorMap && colorMap[ch] !== undefined) {
+			                return true;
+			            }
+			        }
+			    }
+			    return false;
+			}
+			
+			// Draw decoded pixel data to a graphics buffer
+			function drawDecodedToGraphics(g, px, pixelSize, palette) {
+			    // Attempt to disable smoothing to keep crisp edges
+			    try {
+			        // idk if this actually works in KA
+			        if (typeof g.noSmooth === "function") { g.noSmooth(); }
+			    } catch (e) { }
+			
+			    // ensure corner alignment
+			    try {
+			        if (typeof g.rectMode === "function") { g.rectMode(CORNER); }
+			    } catch (e2) { }
+			
+			    g.noStroke();
+			
+			    for (var y = 0; y < px.length; y++) {
+			        var row = px[y] || [];
+			        var x = 0;
+			        while (x < row.length) {
+			            var ch = row[x];
+			            var start = x;
+			            x++;
+			            while (x < row.length && row[x] === ch) { x++; }
+			            var run = x - start;
+			
+			            if (ch === "-" || ch === null || ch === undefined) {
+			                // transparent pixel, skip
+			                continue;
+			            }
+			
+			            var col = palette && palette[ch];
+			            if (!col) {
+			                // unmapped symbol, skip
+			                continue;
+			            }
+			
+			            // compute rectangle coordinates
+			            var x1 = round(start * pixelSize);
+			            var x2 = round((start + run) * pixelSize);
+			            var y1 = round(y * pixelSize);
+			            var y2 = round((y + 1) * pixelSize);
+			
+			            var gw = x2 - x1;
+			            var gh = y2 - y1;
+			
+			            if (gw <= 0 || gh <= 0) { continue; }
+			
+			            if (isArray(col)) {
+			                if (col.length === 4) {
+			                    g.fill(col[0], col[1], col[2], col[3]);
+			                } else {
+			                    g.fill(col[0], col[1], col[2]);
+			                }
+			            } else {
+			                g.fill(col);
+			            }
+			
+			            g.rect(x1, y1, gw, gh);
+			        }
+			    }
+			}
+			
+			// Main renderer
+			function drawHugePixelArt(startX, startY, pixelSize, canvasData, colorMap, frame) {
+			    // tiny safety margin for buffer sizing, but not used for drawing
+			    var sizeMargin = 1; 
+			    noStroke();
+			
+			    // IMAGE PATHS first
+			    if (isArray(canvasData) && canvasData.length > 0 && isPImage(canvasData[0])) {
+			        if (frame === undefined) { frame = 1; }
+			        frame = Math.floor(frame);
+			        var idx = ((frame - 1) % canvasData.length + canvasData.length) % canvasData.length;
+			        var img = canvasData[idx];
+			        if (!img) { return; }
+			
+			        var w = (typeof img.width === "number") ? img.width : (img.getWidth ? img.getWidth() : 0);
+			        var h = (typeof img.height === "number") ? img.height : (img.getHeight ? img.getHeight() : 0);
+			
+			        image(img, startX, startY, round(w * pixelSize), round(h * pixelSize));
+			        return;
+			    }
+			
+			    if (isPImage(canvasData)) {
+			        var w2 = (typeof canvasData.width === "number") ? canvasData.width : (canvasData.getWidth ? canvasData.getWidth() : 0);
+			        var h2 = (typeof canvasData.height === "number") ? canvasData.height : (canvasData.getHeight ? canvasData.getHeight() : 0);
+			
+			        image(canvasData, startX, startY, round(w2 * pixelSize), round(h2 * pixelSize));
+			        return;
+			    }
+			
+			    // RLE PATH
+			    var isFrames = isArray(canvasData) && canvasData.length > 0 && isRLEFrame(canvasData[0]);
+			
+			    var data;
+			    var frameIndex = 0;
+			
+			    if (isFrames) {
+			        if (frame === undefined) { frame = 1; }
+			        frame = Math.floor(frame);
+			
+			        var idx2 = ((frame - 1) % canvasData.length + canvasData.length) % canvasData.length;
+			
+			        var attempts = 0;
+			        var chosenIndex = idx2;
+			        while (attempts < canvasData.length) {
+			            var candidate = canvasData[chosenIndex];
+			            if (frameHasVisibleColor(candidate, colorMap)) {
+			                break;
+			            }
+			            chosenIndex = (chosenIndex - 1 + canvasData.length) % canvasData.length;
+			            attempts++;
+			        }
+			
+			        data = canvasData[chosenIndex];
+			        frameIndex = chosenIndex;
+			    } else {
+			        if (!isArray(canvasData) || !isRLEFrame(canvasData)) {
+			            return;
+			        }
+			        data = canvasData;
+			        frameIndex = 0;
+			    }
+			
+			    if (!data || data.length === 0) { return; }
+			
+			    var cacheKey = buildCacheKey(data, frameIndex, pixelSize, colorMap);
+			
+			    if (!_pixelArtCache[cacheKey]) {
+			        // decode fully (2D char array)
+			        var decoded = decodeRLEImage(data);
+			
+			        // compute max cols and rows
+			        var maxCols = 0;
+			        for (var r = 0; r < decoded.length; r++) {
+			            var ln = decoded[r] ? decoded[r].length : 0;
+			            if (ln > maxCols) { maxCols = ln; }
+			        }
+			        var rows = decoded.length;
+			
+			        var gw = max(1, round(maxCols * pixelSize) + sizeMargin);
+			        var gh = max(1, round(rows * pixelSize) + sizeMargin);
+			
+			        var g = createGraphics(gw, gh, P2D);
+			        g.background(0, 0, 0, 0);
+			
+			        // ensure corner alignment and crisp edges
+			        try {
+			            if (typeof g.rectMode === "function") { g.rectMode(CORNER); }
+			            if (typeof g.noSmooth === "function") { g.noSmooth(); }
+			        } catch (e3) { }
+			        
+			        g.noStroke();
+			        
+			        // draw to graphics buffer
+			        drawDecodedToGraphics(g, decoded, pixelSize, colorMap);
+			
+			        _pixelArtCache[cacheKey] = g;
+			    }
+			    // let's light this candle
+			    image(_pixelArtCache[cacheKey], startX, startY);
+			}
+			
+			// ]
+			
+			var cameraY = 0; 
+			
+			// get width/height (in pixels, not scaled) from a frame
+			function getFrameDims(frame) {
+			    var maxCols = 0;
+			    for (var i = 0; i < frame.length; i++) {
+			        var ln = (frame[i] ? frame[i].length : 0);
+			        if (ln > maxCols) { maxCols = ln; }
+			    }
+			    return { cols: maxCols, rows: frame.length };
+			}
+			
+			// choose the "current" frame for culling checks
+			function getFrameForCulling(canvasData, frame) {
+			    // animated frames: [ [rowStrings], [rowStrings], ... ]
+			    if (isArray(canvasData) && canvasData.length > 0 && isRLEFrame(canvasData[0])) {
+			        var f = (frame === undefined ? 1 : frame);
+			        f = Math.floor(f);
+			        var idx = ((f - 1) % canvasData.length + canvasData.length) % canvasData.length;
+			        return canvasData[idx];
+			    }
+			    // single frame: [rowStrings]
+			    return canvasData;
+			}
+			
+			// simple world to screen visibility test (accounts for camera translate)
+			function isVisibleWorld(x, y, w, h, margin) {
+			    margin = (margin === undefined) ? 80 : margin;
+			    var sy = y + cameraY;
+			    return (
+			        x + w >= -margin &&
+			        x <= 600 + margin &&
+			        sy + h >= -margin &&
+			        sy <= 600 + margin
+			    );
+			}
+			
+			// culled draw wrapper (reduces draw calls a lot)
+			function drawHugePixelArtCulled(x, y, pixelSize, canvasData, colorMap, frame, margin) {
+			    var fr = getFrameForCulling(canvasData, frame);
+			    if (!fr) { return; }
+			    var d = getFrameDims(fr);
+			    var w = d.cols * pixelSize;
+			    var h = d.rows * pixelSize;
+			    if (!isVisibleWorld(x, y, w, h, margin)) { return; }
+			    drawHugePixelArt(x, y, pixelSize, canvasData, colorMap, frame);
+			}
+			
+			// rotate a pixel art array 90° clockwise
+			function rotateArray(canvasData) {
+			    var rotated = [];
+			    var rows = canvasData.length;
+			    var cols = canvasData[0].length;
+			    
+			    for (var col = 0; col < cols; col++) {
+			        var newRow = "";
+			        for (var row = rows - 1; row >= 0; row--) {
+			            newRow += canvasData[row][col];
+			        }
+			        rotated.push(newRow);
+			    }
+			    // returns the rotated array
+			    return rotated;
+			}
+			
+			// Flip array
+			function flipArray(canvasData, type) {
+			    if(type === "horrizontal") {
+			        return canvasData.reverse();
+			    } else {
+			        var flippedData = [];
+			        for (var i = 0; i < canvasData.length; i++) {
+			            flippedData.push(canvasData[i].split("").reverse().join(""));
+			        }
+			        return flippedData;
+			    }
+			}
+			
+			// idle not in drawDK so i can explode him later
+			var dkIdle = [
+			    
+			        "------ssss-----------rrrrrrr--------------------",
+			        "----ssssrss---------rrrrrrrrr-------------------",
+			        "--sssrsssrss-------rrssrrrssrr------------------",
+			        "--ssssrsrrr-------rrssssrssssrr-----------------",
+			        "-rsrsssrsss----ssrrssswwswwsssrss---------------",
+			        "-rrrrsssss----sssrrrsswbsbwssrrsss--------------",
+			        "-rrrrrr------rsssrrrsssssssssrrsss--------------",
+			        "rrrrrrsrrrrrrrrrsssssssrrrssssssrrrs------------",
+			        "rrrrrsrrrrrrrrrssswwssssssssswwssrrrss----------",
+			        "rrrrrrrrrrrrrrrsswwwrwwwrwwwrwwwsrrrrrs---------",
+			        "-rrrrrrrrrrrrrrssrwrrrwrrrwrrrwrsrrrrrrss-------",
+			        "--rrrrrrrrrrrrrrsswwrwwwrwwwrwwsrrrrrrrrrs------",
+			        "----rrrrrrrrrrrrrsssswwwwwwwsssrrrrrrrrrrrs-----",
+			        "-----rrrrrrrrrrrrrrrsssssssssrrrrrrrsrrrrrr-----",
+			        "-------rrrrrrrrrrrrrrrrrrrrrrrrrrrrsrrrrrrr-----",
+			        "---------rrrrrrrrrrrrrrrrrrrrrrrsssrrrrrrrr-----",
+			        "----------rrrrrrrsrsrsrrrrsssssrrrrrrrrrrr------",
+			        "-----------rrrsrrrsssssrrsssrsrrrrrrrrrrr-------",
+			        "-----------rrrrsrssssssrrssssrrrrrrrrrrr--------",
+			        "-----------rrrrsrssrsssrrsssrsrrrrrrr-----------",
+			        "-----------srrsrrsssssrssrssssssrrrrrss---------",
+			        "----------srrrrsrrrrrrssssrssssrrrrrrrrss-------",
+			        "---------srrrrrrrrrsssssssssrrrrrrrrrrrrrs------",
+			        "--------srrrrrrrrrssrrrsrrsrssrrrrrrrrrrrs------",
+			        "-------srrrrrrrrrrrssrsrsrrsrrrrrrrrrrrrrs------",
+			        "-------srrrrrrrrrrsrrsrsrrsrrsrrrrrrrrrrrs------",
+			        "-------srrrrrrrrrrrr----------rrrrrrrrrrrrr-----",
+			        "--------rrrrrrrrrrr---------------rrrrrrrrsss---",
+			        "--------rrrrrrrrrr-----------------rrrrsssrsss--",
+			        "------srssrrrssrs------------------ssssrssssss--",
+			        "-----srssrssssrss-------------------------------",
+			        "----srssssssssss--------------------------------",
+			        "------------------------------------------------",
+			    
+			    ];
+			
+			// death/win varibles
+			var deathTimer = 0;
+			var winTimer = 0; 
+			// particles for when mr kong explodes
+			var dkParticles = [];
+			// is peach and mario dancing?
+			// sadly not yet
+			var dancing = false;
+			
+			// dk's direction to start
+			var DKdirection = "left";
+			
+			// Barrel so i can also explode it
+			var barrelMap = [
+			        "-----ssss-----",
+			        "---ssMMMMss---",
+			        "--sMMMMbbbMs--",
+			        "-sMMMMMbbbMMs-",
+			        "-sMMMMMbbbMMs-",
+			        "sMbMMMMMMMMMMs",
+			        "sMMbMMMMMMMMMs",
+			        "sMMMbMMMMMMMMs",
+			        "sMMMMbMMMMMMMs",
+			        "-sMMMMbMMMMMs-",
+			        "-sMMMMMbMMMMs-",
+			        "--sMMMMMMMMs--",
+			        "---ssMMMMss---",
+			        "-----ssss-----",
+			    
+			];
+			
+			// playing, gameover, won, title
+			var gameState = "title";
+			
+			// holds the exploding player particles
+			var particles = [];
+			// key handler
+			var keys = [];
+			// player stuff
+			var playerX = 100;
+			var playerY = 440;
+			var playerWidth = 45;
+			var playerHeight = 48;
+			var playerSpeed = 2;
+			var gravity = 0.05;
+			var velocityY = 0;
+			var stepHeight = playerHeight / 3;
+			var direction = "left";
+			var animationToggle = 0;
+			var climbing = false;
+			var animationDelay = 5; // controls how fast animations update
+			
+			// Extract pixels from a canvasData frame (for explosion)
+			function getPixelsFromFrame(canvasData, x, y, pixelSize, colorMap) {
+			    var pixels = [];
+			    for (var rowIndex = 0; rowIndex < canvasData.length; rowIndex++) {
+			        for (var columnIndex = 0; columnIndex < canvasData[rowIndex].length; columnIndex++) {
+			            var currentChar = canvasData[rowIndex][columnIndex];
+			            if (currentChar !== "-") {
+			                pixels.push({
+			                    x: x + columnIndex * pixelSize,
+			                    y: y + rowIndex * pixelSize,
+			                    color: colorMap[currentChar]
+			                });
+			            }
+			        }
+			    }
+			    // returns them
+			    return pixels;
+			}
+			
+			// the idle player position seperate so i can explode him
+			var idle = [
+			    "-----rrrr------",
+			    "----rrrrrrrr---",
+			    "----bbbbss-----",
+			    "---bssbssbsss--",
+			    "---bssbbssbsss-",
+			    "--bbbssssbbbb--",
+			    "-----sssssss---",
+			    "----bbbbbb-----",
+			    "---bbbbrrbb----",
+			    "---bbbrrsrr----",
+			    "---bbbbrrrrr---",
+			    "---rbsssrrrr---",
+			    "---rrssrrrrr---",
+			    "---rrrr-rrr----",
+			    "---bbb--bbb----",
+			    "---bbbb-bbbb---",
+			];
+			
+			// DK palettes + facing
+			var DKColorMap = {
+			    "r": color(199, 0, 40),
+			    "w": color(255),
+			    "s": color(255, 195, 170),
+			    "b": color(12, 77, 240),
+			};
+			var DKRight = dkIdle;
+			var DKLeft  = flipArray(dkIdle); // mirrored
+			
+			// Peach (your cat) palette + facing
+			var peachDataRight = [
+			    "uu----uuu------",
+			    "ubu--ubbu------",
+			    "ubcuucbbu------",
+			    "ufcwcfffu------",
+			    "ufwwffffu------",
+			    "uwewfeffu---uu-",
+			    "uwewweffu--uffu",
+			    "uwwpwwwwuu-ufuu",
+			    "uwwwwwwuffuffu-",
+			    "-uwwwwwwwwfuu--",
+			    "--uwwwwwwwwu---",
+			    "--uwuwuwwuwu---",
+			    "--uwuwuuuuwu---",
+			    "--uuuuu-uuuu---",
+			];
+			var peachDataLeft = flipArray(peachDataRight);
+			var peachColorMap = {
+			    "w": color(255),
+			    "p": color(-681849),
+			    "f": color(-5012433),
+			    "b": color(-1127247),
+			    "c": color(-10461088),
+			    "u": color(48, 48, 48),
+			    "e": color(-13687030),
+			};
+			
+			// Player palette
+			var playerColorMap = {
+			    "r": color(255, 0, 0),
+			    "b": color(12, 35, 240),
+			    "s": color(255, 195, 170),
+			};
+			
+			// Player frames (RIGHT-facing originals)
+			var playerFramesRight = [
+			    idle,
+			    [
+			        "-----rrrr------",
+			        "----rrrrrrrr---",
+			        "----bbbbss-----",
+			        "---bssbssbsss--",
+			        "---bssbbssbsss-",
+			        "--bbbssssbbbb--",
+			        "-----sssssss---",
+			        "--bbbbrrbb---ss",
+			        "ssbbbbrrrbbbsss",
+			        "sss-bbrsrrrbbss",
+			        "ss--rrrrrrr--b-",
+			        "---rrrrrrrrrbb-",
+			        "--rrrrrrrrrrbb-",
+			        "-bbbrr---rrrbb-",
+			        "-bbb-----------",
+			        "--bbb----------",
+			    ],
+			    [
+			        "-----rrrr------",
+			        "----rrrrrrrr---",
+			        "----bbbbss-----",
+			        "---bssbssbsss--",
+			        "---bssbbssbsss-",
+			        "--bbbssssbbbb--",
+			        "-----sssssss---",
+			        "----bbbbbr-s---",
+			        "---sbbbbbbsss--",
+			        "--ssrrbbbbss---",
+			        "bbrrrrrrrrrr---",
+			        "bbrrrrrrrrrr---",
+			        "bbrrrr--rrr----",
+			        "b------bbb-----",
+			        "-------bbbb----",
+			    ],
+			    [
+			        "------rrrr---sss",
+			        "-----rrrrrrrrsss",
+			        "-----bbbbss--bbb",
+			        "----bssbssbsssbb",
+			        "----bssbbssbsssb",
+			        "---bbbssssbbbbb-",
+			        "------sssssssb--",
+			        "--bbbbbrbbbrb---",
+			        "-bbbbbbbrbbbr--b",
+			        "ssbbbbbbrrrrr--b",
+			        "sss-rrbrrsrrsrbb",
+			        "-s-brrrrrrrrrrbb",
+			        "--bbbrrrrrrrrrbb",
+			        "-bbbrrrrrrr-----",
+			        "-b--rrrr--------",
+			    ],
+			    [
+			        "-----rrrr------",
+			        "----rrrrrrrr---",
+			        "----bbbbss-----",
+			        "---bssbssbsss--",
+			        "---bssbbssbsss-",
+			        "--bbbssssbbbb--",
+			        "-----sssssss---",
+			        "----bbbbbb---ss",
+			        "---bbbbrrbbbsss",
+			        "---bbbrrsrrbbss",
+			        "---bbbbrrrrr---",
+			        "---rbsssrrrr---",
+			        "---rrssrrrrr---",
+			        "---rrrr-rrr----",
+			        "---bbb--bbb----",
+			        "---bbbb-bbbb---",
+			    ]
+			];
+			
+			// Precompute LEFT-facing player frames for zero-cost mirroring at runtime
+			var playerFramesLeft = [];
+			for (var pf = 0; pf < playerFramesRight.length; pf++) {
+			    playerFramesLeft[pf] = flipArray(playerFramesRight[pf]);
+			}
+			
+			// Barrel frames (0,90,180,270) precomputed once
+			var barrelFrames = (function(){
+			    var f0 = barrelMap;
+			    var f1 = rotateArray(f0);
+			    var f2 = rotateArray(f1);
+			    var f3 = rotateArray(f2);
+			    return [f0, f1, f2, f3];
+			})();
+			
+			var barrelColMapNorm = {
+			    "s": color(255, 195, 170),
+			    "M": color(232, 142, 106),
+			    "b": color(12, 77, 240)
+			};
+			var barrelColMapProof = {
+			    "s": color(200, 200, 255),
+			    "M": color(140, 80, 200),
+			    "b": color(10, 10, 80)
+			};
+			
+			// Truss frame + palette (moved out of drawTruss so it can be cached)
+			var trussData = [
+			    "rrrrrrrrrrrrr",
+			    "ddddddddddddd",
+			    "bbrrrbbbrrrbb",
+			    "brrbrrbrrbrrb",
+			    "rrbbbrrrbbbrr",
+			    "rrrrrrrrrrrrr",
+			    "ddddddddddddd",
+			];
+			var trussColMap = {
+			    "r": color(240, 0, 60),
+			    "d": color(168, 0, 42),
+			    "b": color(0)
+			};
+			
+			
+			var laserActive = false;
+			var laserFramesLeft = 0;
+			var laserDuration = 6;
+			var pullOut = false;
+			var pullTimer = 0;
+			var pullDuration = 20; 
+			var shootCooldown = 0;
+			var barrelParticles = []; 
+			
+			// draw fast dk
+			function drawDK(x, y, pixelSize) {
+			    var data = (DKdirection === "left") ? DKLeft : DKRight;
+			    drawHugePixelArtCulled(x, y, pixelSize, data, DKColorMap, 1, 140);
+			}
+			
+			// draw fast plaer
+			function drawPlayer(x, y, pixelSize) {
+			    var idx = animationToggle;
+			    if (idx < 0) { idx = 0; }
+			    if (idx >= playerFramesRight.length) { idx = 0; }
+			
+			    var data = (direction === "left") ? playerFramesLeft[idx] : playerFramesRight[idx];
+			    drawHugePixelArtCulled(x, y, pixelSize, data, playerColorMap, 1, 140);
+			}
+			
+			// trusses and ladder positions
+			var trusses = [
+			    {x: 0, y: 590, pixelSize: 5, length: 8},
+			    {x: 130, y: 440, pixelSize: 5, length: 2},
+			    {x: 260, y: 430, pixelSize: 5, length: 2},
+			    {x: 390, y: 420, pixelSize: 5, length: 2},
+			    {x: 520, y: 410, pixelSize: 5, length: 2},
+			    {x: 0, y: 300, pixelSize: 5, length: 7},
+			    {x: 100, y: 180, pixelSize: 5, length: 8},
+			    {x: 0, y: 30, pixelSize: 5, length: 7},
+			    {x: 130, y: -140, pixelSize: 5, length: 2},
+			    {x: 260, y: -130, pixelSize: 5, length: 2},
+			    {x: 390, y: -120, pixelSize: 5, length: 2},
+			    {x: 520, y: -110, pixelSize: 5, length: 2},
+			    {x: 0, y: -300, pixelSize: 5, length: 8},
+			    {x: 100, y: -500, pixelSize: 5, length: 8},
+			    {x: 0, y: -700, pixelSize: 5, length: 8},
+			    {x: 100, y: -1040, pixelSize: 5, length: 8},
+			];
+			var ladders = [
+			    {x: 420, y: 310, pixelSize: 5, h: 6},
+			    {x: 120, y: 190, pixelSize: 5, h: 6},
+			    {x: 140, y: 450, pixelSize: 5, h: 7},
+			    {x: 410, y: 45, pixelSize: 5, h: 7},
+			    {x: 150, y: -125, pixelSize: 5, h: 8},
+			    {x: 475, y: -290, pixelSize: 5, h: 8},
+			    {x: 125, y: -490, pixelSize: 5, h: 9},
+			    {x: 465, y: -690, pixelSize: 5, h: 9},
+			    {x: 125, y: -1030, pixelSize: 5, h: 16},
+			    
+			];
+			
+			// handles ladder collisions
+			function handleLadders() {
+			    // we want to climb when player is in center, not the corner
+			    var playerCenterX = playerX + playerWidth / 2;
+			
+			    for (var i = 0; i < ladders.length; i++) {
+			        var l = ladders[i];
+			        var ladderWidth = 6 * l.pixelSize;
+			        var ladderHeight = l.h * (4.33 * l.pixelSize);
+			
+			        if (playerCenterX > l.x && playerCenterX < l.x + ladderWidth &&
+			            playerY + playerHeight >= l.y && playerY <= l.y + ladderHeight) {
+			                // up to climb up
+			            if (keys[UP] || keys[87]) {
+			                playerY -= 2;
+			                velocityY = 0;
+			                climbing = true;
+			            } 
+			        }
+			    }
+			}
+			
+			var kittyDirection = "right";
+			function drawPeach(x, y, pixelSize) {
+			    var data = (kittyDirection === "left") ? peachDataLeft : peachDataRight;
+			    drawHugePixelArtCulled(x, y, pixelSize, data, peachColorMap, 1, 140);
+			}
+			
+			function drawBarrel(x, y, pixelSize, rotation, laserProof) {
+			    var cmap = laserProof ? barrelColMapProof : barrelColMapNorm;
+			    // drawHugePixelArt uses 1-based frame index
+			    drawHugePixelArtCulled(x, y, pixelSize, barrelFrames, cmap, rotation + 1, 140);
+			}
+			
+			function drawLadderG(g, x, y, pixelSize, h){
+			    g.noStroke();
+			    g.fill(0, 255, 255);
+			    g.rect(x, y, pixelSize, h*(4.33*pixelSize));
+			    g.rect(x+pixelSize*5, y, pixelSize, h*(4.33*pixelSize));
+			    for (var i = 0; i < h; i++){
+			        g.rect(x+pixelSize, y+(pixelSize*2)+(i*(pixelSize*4)), pixelSize*4, pixelSize);
+			    }
+			}
+			
+			function drawTrussG(g, x, y, pixelSize, length) {
+			    // (uses "b" as solid black so ladders don't poke through)
+			    var canvasData = trussData;  
+			    var colorMap   = trussColMap; 
+			
+			    for (var tile = 0; tile < length; tile++) {
+			        var offsetX = (x + tile * canvasData[0].length * pixelSize);
+			        for (var rowIndex = 0; rowIndex < canvasData.length; rowIndex++) {
+			            var row = canvasData[rowIndex];
+			            for (var columnIndex = 0; columnIndex < row.length; columnIndex++) {
+			                var ch = row[columnIndex];
+			                if (ch !== "-") {
+			                    g.noStroke();
+			                    g.fill(colorMap[ch]);
+			                    g.rect(offsetX + columnIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
+			                }
+			            }
+			        }
+			    }
+			}
+			
+			// starting barrels positions
+			var barrels = [
+			    {x: 120, y: 250, pixelSize: 3.5, velocityX: 3, velocityY: 0, rotation: 0},
+			    {x: 210, y: 150, pixelSize: 3.5, velocityX: 4.5, velocityY: 0, rotation: 0},
+			    {x: 330, y: 50, pixelSize: 3.5, velocityX: 6, velocityY: 0, rotation: 0},
+			    {x: 440, y: -150, pixelSize: 3.5, velocityX: 4.6, velocityY: 0, rotation: 0},
+			    {x: 530, y: -250, pixelSize: 3.5, velocityX: 5, velocityY: 0, rotation: 0},
+			    {x: 530, y: -350, pixelSize: 3.5, velocityX: 4.314159, velocityY: 0, rotation: 0},
+			    {x: 530, y: -450, pixelSize: 3.5, velocityX: 4.2, velocityY: 0, rotation: 0},
+			    {x: 530, y: -550, pixelSize: 3.5, velocityX: 4.6, velocityY: 0, rotation: 0},
+			    
+			];
+			// barrels seperate gravity
+			var barrelGravity = 0.4;
+			// how fast they rotate (lower = faster)
+			var barrelAnimationDelay = 9;
+			
+			var barrelParticlePool = [];
+			function spawnBarrelParticle(x,y,vx,vy,col,life) {
+			    var p = barrelParticlePool.length ? barrelParticlePool.pop() : {};
+			    p.x=x; p.y=y; p.vx=vx; p.vy=vy; p.color=col; p.life=life;
+			    barrelParticles.push(p);
+			}
+			
+			
+			// Returns the idle player frame (for explosion only)
+			function getIdlePlayerFrame() {
+			    var canvasData = idle;
+			
+			    var colorMap = {
+			        "r": color(255, 0, 0),
+			        "b": color(12, 35, 240),
+			        "s": color(255, 195, 170),
+			    };
+			
+			    return { canvasData: canvasData, colorMap: colorMap };
+			}
+			// start the game over stuff
+			function triggerGameOver() {
+			    gameState = "gameover";
+			    particles = [];
+			    
+			    var frame = getIdlePlayerFrame();
+			    var framePixels = getPixelsFromFrame(frame.canvasData, playerX, playerY, 3, frame.colorMap);
+			
+			    for (var i = 0; i < framePixels.length; i++) {
+			        var fp = framePixels[i];
+			        // KABOOM
+			        particles.push({
+			            x: fp.x,
+			            y: fp.y,
+			            vx: random(-4, 4),
+			            vy: random(-8, -3),
+			            color: fp.color
+			        });
+			        // one wasn't enough KABOOM AGAIN
+			        particles.push({
+			            x: fp.x,
+			            y: fp.y,
+			            vx: random(-4, 4),
+			            vy: random(-8, -3),
+			            color: fp.color
+			        });
+			    }
+			}
+			function removeAtSwapPop(arr, i) {
+			    arr[i] = arr[arr.length - 1];
+			    arr.pop();
+			}
+			// handles the barrels
+			function handleBarrels() {
+			    for (var i = 0; i < barrels.length; i++) {
+			        var b = barrels[i];
+			        
+			        // Safety: remove broken barrels
+			        if (!b || isNaN(b.x) || isNaN(b.y)) {
+			            removeAtSwapPop(barrels, i);
+			            i--;
+			            continue;
+			        }
+			        
+			        // Apply gravity + movement
+			        b.velocityY += barrelGravity;
+			        b.y += b.velocityY;
+			        b.x += b.velocityX;
+			        
+			        // Kill barrels that are far below the player (gone)
+			        // (do this early to avoid extra work + draw calls)
+			        if (b.y > playerY + 650) {
+			removeAtSwapPop(barrels, i);
+			i--;
+			continue;
+			        }
+			        
+			        // Bounce off walls
+			        if (b.x <= 0 || b.x >= 600 - 11 * b.pixelSize) {
+			            b.velocityX *= -1;
+			        }
+			        
+			        // Stair-step logic
+			        var barrelBottom = b.y + 11 * b.pixelSize;
+			        var bestGround = null;
+			        
+			        for (var j = 0; j < trusses.length; j++) {
+			            var t = trusses[j];
+			            var trussWidth = t.length * 13 * t.pixelSize;
+			            var trussTop = t.y;
+			
+			            var overlapX = (b.x + 11*b.pixelSize > t.x) && (b.x < t.x + trussWidth);
+			            if (!overlapX) { continue; }
+			
+			            var diff = trussTop - barrelBottom;
+			            if (diff < -stepHeight || diff > stepHeight) { continue; }
+			
+			            var stepHeight = 11 * b.pixelSize / 2;
+			
+			            if (diff >= -stepHeight && diff <= stepHeight) {
+			                if (bestGround === null || trussTop < bestGround) {
+			                    bestGround = trussTop;
+			                }
+			            }
+			        }
+			        
+			        if (bestGround !== null) {
+			            b.y = bestGround - 11 * b.pixelSize;
+			            b.velocityY = 0;
+			        }
+			        
+			        // Rotation animation
+			        if (frameCount % barrelAnimationDelay === 0) {
+			            b.rotation = (b.rotation + 1) % 4;
+			        }
+			        
+			        // Draw barrel (internally culled now via drawBarrel->drawHugePixelArtCulled)
+			        drawBarrel(b.x, b.y, b.pixelSize, b.rotation, b.laserProof);
+			        
+			        // Player collision
+			        var barrelRadius = 5.5 * b.pixelSize;
+			        var barrelCenterX = b.x + barrelRadius;
+			        var barrelCenterY = b.y + barrelRadius;
+			        
+			        var playerCenterX = playerX + playerWidth / 2;
+			        var playerCenterY = playerY + playerHeight / 2;
+			        
+			        var dx = barrelCenterX - playerCenterX;
+			        var dy = barrelCenterY - playerCenterY;
+			        var combinedRadius = barrelRadius + Math.min(playerWidth, playerHeight)/3;
+			        var rr = combinedRadius * combinedRadius;
+			        
+			        if (dx*dx + dy*dy < rr && gameState === "playing") {
+			            triggerGameOver();
+			        }
+			    }
+			}
+			
+			// Explode a barrel at index 'idx' in the barrels array
+			function explodeBarrel(idx) {
+			    var br = barrels[idx];
+			
+			    var barrelData = barrelMap;
+			    var barrelColorMap;
+			    if (br && br.laserProof) {
+			        barrelColorMap = {
+			            "s": color(200, 200, 255),
+			            "M": color(140, 80, 200),
+			            "b": color(10, 10, 80)
+			        };
+			    } else {
+			        barrelColorMap = {
+			            "s": color(255, 195, 170),
+			            "M": color(232, 142, 106),
+			            "b": color(12, 77, 240)
+			        };
+			    }
+			
+			    // get pixel list from the barrel frame and spawn particles
+			    var pixels = getPixelsFromFrame(barrelData, br.x, br.y, br.pixelSize, barrelColorMap);
+			
+			    for (var p = 0; p < pixels.length; p++) {
+			        var fp = pixels[p];
+			        spawnBarrelParticle(fp.x, fp.y,
+			        random(-4,4), random(-8,-2),
+			        fp.color,
+			        round(random(40,80))
+			    );
+			    }
+			
+			    // remove the barrel from the world
+			    removeAtSwapPop(barrels, idx);
+			}
+			
+			function fireLaser() {
+			    // Laser fires instantly across the screen in the player's facing direction
+			    laserActive = true;
+			    
+			    laserFramesLeft = laserDuration;
+			
+			    // determine laser line and check barrels
+			    var laserY = playerY + playerHeight / 2;
+			    var playerFrontX = (direction === "left") ? playerX : (playerX + playerWidth);
+			
+			    for (var i = barrels.length - 1; i >= 0; i--) {
+			        var br = barrels[i];
+			        // center of barrel
+			        var barrelRadius = 5.5 * br.pixelSize;
+			        var bx = br.x + barrelRadius;
+			        var by = br.y + barrelRadius;
+			
+			        // check approximate vertical overlap (tolerance tuned to pixel art)
+			        var verticalTolerance = 12 * br.pixelSize;
+			        var inVerticalRange = Math.abs(by - laserY) <= verticalTolerance;
+			
+			        // check that barrel is in the direction of the laser
+			        var inDirection = (direction === "right") ? (bx > playerFrontX) : (bx < playerFrontX);
+			
+			                if (inVerticalRange && inDirection) {
+			            // explode only if not laser-proof
+			            if (!br.laserProof) {
+			                explodeBarrel(i);
+			            } else {
+			                for (var s = 0; s < 20; s++) {
+			                    barrelParticles.push({
+			                        x: bx + random(-6, 6),
+			                        y: by + random(-6, 6),
+			                        vx: random(-3, 3),
+			                        vy: random(-6, -1),
+			                        color: color(255, 180 + random(-30,30), 80),
+			                        life: round(random(18, 36))
+			                    });
+			                }
+			                
+			            }
+			        }
+			
+			    }
+			}
+			
+			// the camera stuff
+			var cameraSmooth = 0.1; 
+			
+			// BAKE THE MAP LETS GOOOOO
+			var wrldTop = -1400;
+			var wrldBottom = 650;
+			var wrldH = wrldBottom - wrldTop;
+			var worldW = 600;
+			var mapLayer = null;
+			var mapImage = null;
+			var mapBuilt = false;
+			
+			// current ground and best step up
+			var currentGround = 550;
+			var bestStep = null;
+			
+			// to make him fall
+			function computePlayerGround() {
+			    var playerBottom = playerY + playerHeight;
+			    var bestGround = null; 
+			    for (var j = 0; j < trusses.length; j++) {
+			        var t = trusses[j];
+			        var trussWidth = t.length * 13 * t.pixelSize;
+			        var trussTop = t.y;
+			        
+			        var overlapX = (playerX + playerWidth > t.x) && (playerX < t.x + trussWidth);
+			        if (!overlapX) { continue; }
+			        
+			        
+			        var diff = trussTop - playerBottom;
+			        
+			        var stepTolerance = stepHeight; // you already have 
+			        if (playerBottom <= trussTop + 5 && velocityY >= 0) {
+			            var candidate = trussTop - playerHeight;
+			            if (bestGround === null || candidate < bestGround) { 
+			                bestGround = candidate;
+			            }
+			        }
+			        
+			        else if (diff >= -stepTolerance && diff <= stepTolerance) { 
+			            var candidate = trussTop - playerHeight;
+			            if (bestGround === null || candidate < bestGround) {
+			                bestGround = candidate;
+			            }
+			        }
+			    }
+			    
+			    return bestGround; // null if nothing close enough
+			}
+			
+			
+			function drawPixelArc(cx, cy, diameter, pixelSize, progress, activeColor, bgColor) {
+			    var radius = diameter / 2;
+			    var center = radius;
+			    var outlineOuterRadiusSq = (radius + 0.1) * (radius + 0.1);
+			    var fillRadiusSq = (radius - 1) * (radius - 1);
+			    
+			    var startX = cx - (diameter * pixelSize / 2);
+			    var startY = cy - (diameter * pixelSize / 2);
+			    
+			    noStroke();
+			    for (var y = 0; y < diameter; y++) {
+			        for (var x = 0; x < diameter; x++) {
+			            var dx = x + 0.5 - center;
+			            var dy = y + 0.5 - center;
+			            var distSq = dx * dx + dy * dy;
+			            
+			            // only the outline ring pixels
+			            if (distSq > fillRadiusSq && distSq <= outlineOuterRadiusSq) {
+			                // angle starting from top (12 o'clock), going clockwise
+			                var angle = Math.atan2(dy, dx) + Math.PI / 2;
+			                if (angle < 0) { angle += Math.PI * 2; }
+			
+			                var lit = (angle / (Math.PI * 2)) <= progress;
+			                fill(lit ? activeColor : bgColor);
+			                rect(startX + x * pixelSize, startY + y * pixelSize, pixelSize, pixelSize);
+			            }
+			        }
+			    }
+			}
+			
+			function drawLaserIndicator() {
+			    var cx = Math.round(playerX + playerWidth / 2);
+			    var cy = Math.round(playerY - 26);
+			    var diameter = 15;
+			    var px = 3;
+			
+			    if (pullOut) {
+			        var elapsed = pullDuration - pullTimer;
+			        var progress = Math.max(0, Math.min(1, elapsed / pullDuration));
+			        drawPixelArc(cx, cy, diameter, px, progress, color(250, 210, 40), color(250, 210, 40));
+			        return;
+			    }
+			    if (shootCooldown > 0) {
+			        var readyRatio = 1 - (shootCooldown / 120);
+			        drawPixelArc(cx, cy, diameter, px, readyRatio, color(120, 200, 80), color(60, 60, 60));
+			        return;
+			    }
+			    // fully ready
+			    drawPixelArc(cx, cy, diameter, px, 1.0, color(120, 200, 80), color(40, 40, 40));
+			}
+			
+			function resetGame() {
+			    // reset player
+			    gameState = "playing";
+			    playerX = 100;
+			    playerY = 440;
+			    playerWidth = 45;
+			    playerHeight = 48;
+			    playerSpeed = 2;
+			    gravity = 0.05;
+			    velocityY = 0;
+			    direction = "left";
+			    animationToggle = 0;
+			    climbing = false;
+			
+			    // timers/flags
+			    deathTimer = 0;
+			    winTimer = 0;
+			    laserActive = false;
+			    laserFramesLeft = 0;
+			    pullOut = false;
+			    pullTimer = 0;
+			    shootCooldown = 0;
+			    dancing = false;
+			
+			    // clear / reset particles
+			    particles = [];
+			    dkParticles = [];
+			    barrelParticles = [];
+			
+			    // reset camera
+			    cameraY = 0;
+			
+			    barrels = [
+			        {x: 120, y: 250, pixelSize: 3.5, velocityX: 3, velocityY: 0, rotation: 0},
+			        {x: 210, y: 150, pixelSize: 3.5, velocityX: 4.5, velocityY: 0, rotation: 0},
+			        {x: 330, y: 50, pixelSize: 3.5, velocityX: 6, velocityY: 0, rotation: 0},
+			        {x: 440, y: -150, pixelSize: 3.5, velocityX: 4.6, velocityY: 0, rotation: 0},
+			        {x: 530, y: -250, pixelSize: 3.5, velocityX: 5, velocityY: 0, rotation: 0},
+			        {x: 530, y: -350, pixelSize: 3.5, velocityX: 4.314159, velocityY: 0, rotation: 0},
+			        {x: 530, y: -450, pixelSize: 3.5, velocityX: 4.2, velocityY: 0, rotation: 0},
+			        {x: 530, y: -550, pixelSize: 3.5, velocityX: 4.6, velocityY: 0, rotation: 0},
+			    ];
+			    for (var i = 0; i < barrels.length; i++) {
+			        barrels[i].laserProof = (random() < 0.2);
+			    }
+			
+			    // reset DK direction and related
+			    DKdirection = "left";
+			}
+			
+			// tweakable UI appearance (: (: (:
+			var titleButtons = [
+			  { label: "Play", x: 180, y: 260, w: 240, h: 72, action: function(){ gameState = "playing"; resetGame(); } },
+			  { label: "How",  x: 180, y: 350, w: 240, h: 72, action: function(){ gameState = "how"; } },
+			
+			];
+			
+			var titleFontSize = 62;
+			var titleSubFontSize = 22;
+			
+			// helper: draw a single button in screen-space
+			function drawButton(btn, mx, my) {
+			    var isHover = (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h);
+			    // outline / background
+			    noStroke();
+			    if (isHover) {
+			        fill(90, 160, 255, 240);
+			        rect(btn.x-4, btn.y-4, btn.w+8, btn.h+8, 8); // glow/backplate
+			    }
+			    // main button
+			    fill(40, 50, 80, 230);
+			    rect(btn.x, btn.y, btn.w, btn.h, 8);
+			    // label
+			    textSize(26);
+			    textAlign(CENTER, CENTER);
+			    fill(230);
+			    text(btn.label, btn.x + btn.w/2, btn.y + btn.h/2);
+			}
+			
+			// title screen UI
+			function drawTitleScreenUI() {
+			    // undo camera transform so mouseX/mouseY match screen coords
+			    // i could have popped it earlier but oh well
+			    pushMatrix();
+			    translate(0, -cameraY);
+			
+			    // dim background
+			    noStroke();
+			    fill(10, 10, 20, 220);
+			    rect(-50, -50, 1200, 1200);
+			
+			    // title text
+			    textAlign(CENTER, CENTER);
+			    textSize(titleFontSize);
+			    fill(250, 210, 40);
+			    text("DONKEY KHAN", 300, 100);
+			    
+			    drawPeach(428, 200, 10);
+			    animationToggle = 3;
+			    direction = "right";
+			    drawPlayer(15, 333, 8);
+			    drawDK(400, 428, 4); 
+			    // subtitle
+			    textSize(titleSubFontSize);
+			    fill(230);
+			    text("Arrow Keys to move\nAvoid Barrels\nSave your pet cat Peach", 300, 188);
+			    
+			    // draw buttons
+			    var mx = mouseX;
+			    var my = mouseY;
+			    for (var i = 0; i < titleButtons.length; i++) {
+			        drawButton(titleButtons[i], mx, my);
+			    }
+			    
+			    popMatrix();
+			}
+			
+			// how screen
+			function drawHowScreenUI() {
+			    pushMatrix();
+			    translate(0, -cameraY);
+			    
+			    noStroke();
+			    fill(6, 12, 30, 230);
+			    rect(0, 0, 600, 600);
+			    
+			    textAlign(CENTER, TOP);
+			    textSize(40);
+			    fill(220);
+			    text("HOW TO PLAY", 300, 48);
+			    
+			    textSize(18);
+			    fill(210);
+			    var lines = [
+			        "Move with LEFT and RIGHT arrow keys, jump with UP.",
+			        "Climb ladders by centering on them and pressing UP.",
+			        "Press SPACE to pull out your laser cannon.",
+			        "Higher you climb -> more barrels spawn.",
+			        "Some barrels are laser-proof (purple) and won't explode to lasers."
+			    ];
+			    var yBase = 120;
+			    for (var i = 0; i < lines.length; i++) {
+			        text(lines[i], 300, yBase + i * 28);
+			    }
+			    
+			    // Back button
+			    var backBtn = { x: 200, y: 480, w: 200, h: 56, label: "Back", action: function(){ gameState = "title"; } };
+			    drawButton(backBtn, mouseX, mouseY);
+			    
+			    drawBarrel(20, 380, 10, 0, true);
+			    drawBarrel(430, 280, 10, 0);
+			    direction = "right";
+			    drawPlayer(230, 300, 10);
+			    
+			    popMatrix();
+			}
+			
+			function buildStaticMap() {
+			    mapLayer = createGraphics(worldW, wrldH, P2D);
+			    mapLayer.background(0, 0, 0, 0); // transparent
+			
+			    // draw ladders behind trusses
+			    for (var j = 0; j < ladders.length; j++) {
+			        var L = ladders[j];
+			        drawLadderG(mapLayer, L.x, (L.y - wrldTop), L.pixelSize, L.h);
+			    }
+			
+			    // draw trusses
+			    for (var i = 0; i < trusses.length; i++) {
+			        var T = trusses[i];
+			        drawTrussG(mapLayer, T.x, (T.y - wrldTop), T.pixelSize, T.length);
+			    }
+			
+			    mapBuilt = true;
+			
+			
+			    try {
+			        mapImage = mapLayer.get(); 
+			        // println("This thing works?");
+			    } catch (e) {
+			        mapImage = null; // fall back to drawing mapLayer directly
+			    }
+			}
+			
+			buildStaticMap();
+			
+			// draw function
+			draw = function() {
+			    
+			    // translate based on the camera
+			    translate(0, round(cameraY));
+			    
+			    // background
+			    background(0);
+			    if (shootCooldown > 0) {
+			        shootCooldown--;
+			    }
+			
+			    // handle laser lifetime
+			    if (laserActive) {
+			        laserFramesLeft--;
+			        if (laserFramesLeft <= 0) {
+			            laserActive = false;
+			        }
+			    }
+			
+			    // update barrel explosion particles (place with other particle updates)
+			    for (var bp = barrelParticles.length - 1; bp >= 0; bp--) {
+			        var part = barrelParticles[bp];
+			        part.x += part.vx;
+			        part.y += part.vy;
+			        part.vy += 0.25; // gravity
+			        part.life--;
+			        noStroke();
+			        fill(part.color);
+			        rect(part.x, part.y, 3, 3);
+			        
+			        if (part.life <= 0 || part.y > 800) {
+			            var dead = barrelParticles[bp];
+			            removeAtSwapPop(barrelParticles, bp);
+			            barrelParticlePool.push(dead);
+			        }
+			    }
+			
+			
+			    // camera target
+			    var targetY = -playerY + 380;
+			    cameraY += (targetY - cameraY) * cameraSmooth; 
+			    pushMatrix();
+			    // climbing is false
+			    climbing = false;
+			    // handles ladder collision
+			    handleLadders();
+			    // sets the best ground 
+			    var groundCandidate = computePlayerGround();
+			    if (!climbing) {
+			        // if we not climbing then apply gravity
+			        velocityY += gravity*2;
+			        playerY += velocityY*2;
+			    } else {
+			        // otherwise there is none
+			        velocityY = 0;
+			    }
+			    // more ground stuff
+			    if (groundCandidate !== null) {
+			        if (playerY >= groundCandidate) {
+			            playerY = groundCandidate;
+			            velocityY = 0;
+			        }
+			    }
+			        
+			    // only move if not shooting
+			    if (!pullOut) {
+			        if (keys[LEFT] || keys[65]) {
+			            direction = "left";
+			            playerX -= playerSpeed;
+			        } else if (keys[RIGHT] || keys[68]) {
+			            direction = "right";
+			            playerX += playerSpeed;
+			        }
+			        if ((keys[UP] || keys[87]) && groundCandidate !== null && playerY >= groundCandidate) {
+			            velocityY = -2.2;
+			        }
+			    } else {
+			        animationToggle = 0; 
+			    }
+			        
+			        
+			    if (frameCount % (animationDelay*5) === 0) {
+			        if (DKdirection === "left") {
+			            DKdirection = "right";
+			        } else if (DKdirection === "right") {
+			            DKdirection = "left";
+			        }
+			        
+			    }
+			    var maxEffectiveHeight = 1200;
+			    var baseSpawnChance = 0.004;
+			    var extraSpawnMax = 0.0267; 
+			    
+			    var heightFactor = Math.min(1, Math.max(0, (-playerY) / maxEffectiveHeight)); // 0..1
+			    var spawnChancePerFrame = baseSpawnChance + heightFactor * extraSpawnMax;
+			    
+			    if (random() < spawnChancePerFrame && gameState === "playing") {
+			        var isLaserProof = (random() < 0.2); // 20% chance
+			        barrels.push({
+			            x: random(100, 500),
+			            y: playerY - 500,
+			            pixelSize: 3.5,
+			            velocityX: random(2, 6),
+			            velocityY: 0,
+			            rotation: 0,
+			            laserProof: isLaserProof
+			        });
+			    }
+			        
+			    
+			
+			    // draw baked map (one draw call instead of hundreds)
+			    if (mapBuilt) {
+			        if (mapImage) {
+			            image(mapImage, 0, wrldTop);
+			        } else if (mapLayer) {
+			            image(mapLayer, 0, wrldTop);
+			            println("maplayer used.");
+			        }
+			    }
+			    
+			    
+			    if(playerY < -1100){
+			        gameState = "won";
+			    }
+			    stroke(255);
+			    strokeWeight(1);
+			    line(0, -1200, 0, -1200);
+			    
+			    // draw mr kong
+			    if (winTimer <= 60) {
+			        drawDK(290, -1200, 5);
+			        
+			        drawPeach(520, -1110, 5);
+			        handleBarrels();
+			        
+			        
+			        // ground stuff    
+			        var grounded = false;
+			        var groundEpsilon = 1; 
+			        
+			        if (climbing) {
+			            grounded = true; 
+			        }
+			        
+			        if (!grounded && groundCandidate !== null && playerY >= groundCandidate - groundEpsilon) {
+			            grounded = true;
+			        }
+			        if (laserActive && gameState === "playing") {
+			            var ly = playerY + playerHeight / 2;
+			            var lx1 = (direction === "left") ? playerX : (playerX + playerWidth/2);
+			            var lx2 = (direction === "left") ? -200 : (width + 200);
+			            
+			            strokeWeight(4);
+			            stroke(200, 20, 20);
+			            line(lx1, ly, lx2, ly);
+			            // small glow
+			            strokeWeight(2);
+			            stroke(255, 120, 120);
+			            line(lx1, ly, lx2, ly);
+			            noStroke();
+			        }
+			        // Set animation based on grounded + input
+			        if (!grounded) {
+			            animationToggle = 3;
+			        } else {
+			            // on ground: walking or idle
+			            if (keys[LEFT] || keys[RIGHT] || keys[68] || keys[65]) {
+			                if (frameCount % animationDelay === 0) {
+			                    animationToggle++;
+			                }
+			                if (animationToggle > 2 || animationToggle < 0) {
+			                    animationToggle = 0;
+			                }
+			            } else {
+			                animationToggle = 0; // idle
+			            }
+			        }
+			        
+			        // handle pull-out timer (locks movement while pulling)
+			        if (pullOut) {
+			            pullTimer--;
+			            animationToggle = 4;
+			            if (pullTimer <= 0) {
+			                pullOut = false;
+			                fireLaser();
+			            }
+			        }
+			        
+			        
+			    }
+			    playerX = constrain(playerX, 0, width-45);
+			    if(gameState === "playing") {
+			        drawLaserIndicator();
+			        drawPlayer(playerX, playerY, 3);
+			    }
+			    else if (gameState === "gameover") {
+			        deathTimer ++;
+			        // update and draw particles for exploding dk
+			        for (var i = 0; i < particles.length; i++) {
+			            var p = particles[i];
+			            p.x += p.vx;
+			            p.y += p.vy;
+			            p.vy += 0.2; // gravity
+			            
+			            noStroke();
+			            fill(p.color);
+			            rect(p.x, p.y, 4, 4);
+			        }
+			        
+			        
+			        // if you dead for long enough then restart the program
+			        if (deathTimer > 100) {
+			            // just this works on windows & safari
+			            resetGame();
+			        }
+			    }
+			    // when you win
+			    else if (gameState === "won") {
+			        // lock player y onto the top platform
+			        playerY = -1088;
+			        // hes idle if not yet dancing
+			        if(winTimer < 60){
+			            animationToggle = 0;
+			        }
+			        // yay hes dancing
+			        else {
+			            if(winTimer % 30 === 0) {
+			                animationToggle ++;
+			            }
+			        }
+			        if(animationToggle === 3) {
+			            animationToggle = 1;
+			        }
+			        // draw him
+			        drawPlayer(playerX, playerY, 3);
+			        // add to win timer
+			        winTimer++;
+			        
+			        //  60 frames, trigger DK explosion
+			        if (winTimer === 60) {
+			            var dkFrame = dkIdle;
+			            
+			            // repeat color map for kong
+			            var dkColorMap = {
+			                "r": color(199, 0, 40),
+			                "w": color(255),
+			                "s": color(255, 195, 170),
+			                "b": color(12, 77, 240),
+			            };
+			            
+			            dkParticles = getPixelsFromFrame(dkFrame, 290, -1200, 5, dkColorMap);
+			            dancing = true;
+			        }
+			        
+			        // Update DK explosion particles
+			        for (var i = 0; i < dkParticles.length; i++) {
+			            var p = dkParticles[i];
+			            if (!p.vx) {
+			                p.vx = random(-4, 4);
+			                p.vy = random(-8, -3);
+			            }
+			            p.x += p.vx;
+			            p.y += p.vy;
+			            p.vy += 0.2; // gravity
+			    
+			            noStroke();
+			            fill(p.color);
+			            rect(p.x, p.y, 4, 4);
+			        }
+			        
+			        // Dancing & text 
+			        if (dancing) {
+			            textSize(60);
+			            textAlign(CENTER, CENTER);
+			            fill(200, 255, 0);
+			            text("PEACH IS SAVED!", 300, -1300);
+			            textSize(40);
+			            fill(233, 240, 204);
+			            text("DANCE PARTY!", 300, -1250);
+			            textSize(20);
+			            text("- click to play again -", 300, -1200);
+			            // switch their dirrections
+			            if (frameCount % 30 === 0) {
+			                direction = (direction === "left") ? "right" : "left";
+			                kittyDirection = (kittyDirection === "left") ? "right" : "left";
+			            }
+			            // draw player and peach
+			            drawPlayer(playerX, playerY, 3);
+			            drawPeach(520, -1110, 5);
+			        }
+			        
+			    }
+			    popMatrix();
+			    // draw title / how screens on top
+			    if (gameState === "title") {
+			        drawTitleScreenUI();
+			    } else if (gameState === "how") {
+			        drawHowScreenUI();
+			    }
+			    popMatrix();
+			    textSize(14);
+			    fill(255, 255, 255);
+			    text(round(this.__frameRate) + " FPS", width-40, height-20);
+			    
+			    
+			};
+			
+			// mouse input
+			mouseClicked = function() {
+			    // If on title/how screens: check buttons in screen coordinates
+			    if (gameState === "title") {
+			        for (var i = 0; i < titleButtons.length; i++) {
+			            var b = titleButtons[i];
+			            if (mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h) {
+			                if (typeof b.action === "function") { b.action(); }
+			                return;
+			            }
+			        }
+			    } else if (gameState === "how") {
+			        // matches the button
+			        var bx = 200, by = 480, bw = 200, bh = 56;
+			        if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+			            gameState = "title";
+			            return;
+			        }
+			    } else if (gameState === "gameover" || gameState === "won") {
+			        resetGame();
+			    }
+			};
+			
+			// key input
+			keyPressed = function() {
+			    keys[keyCode] = true;
+			    
+			    // SPACE
+			    if (keyCode === 32 && shootCooldown <= 0 && gameState === "playing" && !pullOut && !laserActive) {
+			        // begin pull-out; movement locked until pullTimer reaches 0
+			        pullOut = true;
+			        pullTimer = pullDuration;
+			        shootCooldown = 120; 
+			    }
+			};
+			
+			keyReleased = function() {
+			    keys[keyCode] = false;
+			};
+			
+			
+		}
+		
+		runPJS(program);
+		
+		// Add reload button on KA --> <script>
+		
+	</script>
+</body>
+
+</html>
