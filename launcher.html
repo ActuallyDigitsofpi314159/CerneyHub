@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>C-Hub Launcher</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+    :root {
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --purple: #a855f7;
+      --teal: #06b6d4;
+      --green: #10b981;
+      --orange: #f97316;
+      --pink: #ec4899;
+      --bg: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      min-height: 100%;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: rgba(255,255,255,0.92);
+      line-height: 1.5;
+      background: var(--bg);
+      overflow-x: hidden;
+      overflow-y: auto;
+      position: relative;
+      scroll-behavior: smooth;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(255,255,255,0.04), transparent 35%);
+      pointer-events: none;
+    }
+
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 68px 68px;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    button {
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .launcher-shell {
+      min-height: 100vh;
+      width: 100%;
+      padding: 28px 22px 42px;
+      background: rgba(6,10,29,0.95);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .launcher-header {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .launcher-brand {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(38px, 5vw, 56px);
+      letter-spacing: 0.14em;
+      color: white;
+    }
+
+    .launcher-tag {
+      color: rgba(255,255,255,0.85);
+      max-width: 100%;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .tiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+      width: 100%;
+    }
+
+    .game-tile {
+      background: transparent;
+      border: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      text-align: center;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .game-tile:hover,
+    .game-tile:focus-visible {
+      transform: translateY(-6px);
+      box-shadow: 0 28px 70px rgba(0,0,0,0.18);
+    }
+
+    .game-tile:focus-visible {
+      outline: 3px solid rgba(6,182,212,0.62);
+      outline-offset: 4px;
+    }
+
+    .tile-art {
+      width: 100%;
+      height: 260px;
+      display: grid;
+      place-items: center;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .tile-icon {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 72px;
+      font-weight: 700;
+      color: white;
+      text-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    }
+
+    .tile-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      margin-bottom: 4px;
+      color: white;
+    }
+
+    .tile-status {
+      width: 100%;
+      color: rgba(255,255,255,0.75);
+      font-size: 13px;
+      line-height: 1.6;
+      padding: 0 12px;
+    }
+
+    .launcher-footer {
+      margin-top: auto;
+      color: rgba(255,255,255,0.55);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .loading-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+    }
+
+    .loading-card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(26px);
+      border-radius: 28px;
+      padding: 34px 30px;
+      text-align: center;
+      box-shadow: 0 28px 80px rgba(0,0,0,0.28);
+    }
+
+    .loading-ring {
+      width: 72px;
+      height: 72px;
+      border: 6px solid rgba(255,255,255,0.18);
+      border-top-color: rgba(6,182,212,0.85);
+      border-radius: 50%;
+      margin: 0 auto 22px;
+      animation: spin 1s linear infinite;
+    }
+
+    .loading-label {
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .loading-subtext {
+      color: rgba(255,255,255,0.76);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 860px) {
+      .launcher-shell {
+        padding: 28px 24px;
+      }
+
+      .tiles-grid {
+        gap: 18px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .tiles-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      .tile-art {
+        width: 80px;
+        height: 80px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .launcher-shell {
+        padding: 22px 18px;
+      }
+
+      .game-tile {
+        gap: 14px;
+      }
+
+      .tile-title {
+        font-size: 13px;
+      }
+
+      .tile-status {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div id="launcher-root"></div>
+  <script>
+    const GAME_LIBRARY = [
+      {
+        id: 'mario64',
+        title: 'Super Mario 64',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/mario64.svg',
+        status: 'Runs great',
+        url: 'games/mario64.html',
+        color: 'var(--red)',
+      },
+      {
+        id: 'e112',
+        title: 'Eaglercraft 1.12',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/e112.svg',
+        status: 'Experimental',
+        special: true,
+        wrapperUrl: 'https://cdn.jsdelivr.net/gh/PlanetDogeCodes/Eagletcraft-1.12@main/source%20file/egc1-12.xml',
+        color: 'var(--purple)',
+      },
+      {
+        id: 'dumLLM',
+        title: 'dumLLM',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/dumLLM.svg',
+        status: 'Stable-ish',
+        url: 'games/dumLLM.html',
+        color: 'var(--yellow)',
+      },
+      {
+        id: 'badbrowser',
+        title: 'Bad Browser',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/badbrowser.svg',
+        status: 'Experimental',
+        url: 'games/badbrowser.html',
+        color: 'var(--teal)',
+      },
+      {
+        id: 'mineKhan',
+        title: 'MineKhan',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/mineKhan.svg',
+        status: 'Runs great',
+        url: 'games/mineKhan.html',
+        color: 'var(--green)',
+      },
+      {
+        id: 'karlson',
+        title: 'Karlson',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/karlson.svg',
+        status: 'Fast action',
+        url: 'games/karlson.html',
+        color: 'var(--red)',
+      },
+      {
+        id: 'bss',
+        title: 'Bee Swarm Simulator',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/bss.svg',
+        status: 'Fun and stable',
+        url: 'games/BSS.html',
+        color: 'var(--yellow)',
+      },
+      {
+        id: 'granny',
+        title: 'Granny',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/granny.svg',
+        status: 'Spooky',
+        url: 'games/granny.html',
+        color: 'var(--orange)',
+      },
+      {
+        id: 'basketballlegends',
+        title: 'Basketball Legends',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/basketballlegends.jpg',
+        status: 'Competitive',
+        url: 'games/basketballlegends.html',
+        color: 'var(--purple)',
+      },
+      {
+        id: '1v1',
+        title: '1v1',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/1v1.svg',
+        status: 'Laggy on some machines',
+        url: 'games/1v1.html',
+        color: 'var(--pink)',
+      },
+      {
+        id: 'donkeyKhan',
+        title: 'Donkey Khan',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/donkeyKhan.svg',
+        status: 'Classic fun',
+        url: 'games/donkeyKhan.html',
+        color: 'var(--orange)',
+      },
+      {
+        id: 'genericPlatformer3d',
+        title: 'Generic Platformer 3D',
+        image: 'https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/assets/game-icons/genericPlatformer3d.svg',
+        status: 'Smooth',
+        url: 'games/genericPlatformer3d.html',
+        color: 'var(--green)',
+      },
+    ];
+
+    function initLauncher() {
+      const root = document.getElementById('launcher-root');
+      if (!root) return;
+
+      root.innerHTML = `
+        <div class="launcher-shell">
+          <header class="launcher-header">
+            <div class="launcher-brand">C-Hub Launcher</div>
+            <p class="launcher-tag">Select a game tile and fire it up.</p>
+          </header>
+          <div class="tiles-grid">
+            ${GAME_LIBRARY.map(game => `
+              <button class="game-tile" data-game-id="${game.id}" type="button" tabindex="0">
+                <div class="tile-art">
+                  <img src="${game.image}" alt="${game.title} icon" />
+                </div>
+                <div class="tile-title">${game.title}</div>
+                <div class="tile-status">${game.status}</div>
+              </button>
+            `).join('')}
+          </div>
+          <footer class="launcher-footer">If a game is blocked, allow popups and try again.</footer>
+        </div>
+      `;
+
+      const tiles = root.querySelectorAll('.game-tile');
+
+      tiles.forEach(tile => {
+        tile.addEventListener('click', () => {
+          const gameId = tile.getAttribute('data-game-id');
+          launchGame(gameId);
+        });
+      });
+    }
+
+    function launchGame(gameId) {
+      const game = GAME_LIBRARY.find(entry => entry.id === gameId);
+      if (!game) return;
+
+      const target = window.open(
+        'about:blank',
+        game.id,
+        'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no'
+      );
+
+      if (!target) {
+        alert('Popup blocked. Enable popups to open the game.');
+        return;
+      }
+
+      const loadingHtml =
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
+        '<title>Loading ' + game.title + '<\/title>' +
+        '<style>@import url(\'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap\');' +
+        ':root{--bg:linear-gradient(135deg,#0f0f23 0%,#1a1a2e 50%,#16213e 100%);}' +
+        '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}' +
+        'html,body{min-height:100%;}' +
+        'body{font-family:\'Inter\',sans-serif;color:rgba(255,255,255,0.92);background:var(--bg);overflow:hidden;display:flex;align-items:center;justify-content:center;}' +
+        '.loading-card{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);backdrop-filter:blur(26px);border-radius:28px;padding:34px 30px;text-align:center;box-shadow:0 28px 80px rgba(0,0,0,0.28);}' +
+        '.loading-ring{width:72px;height:72px;border:6px solid rgba(255,255,255,0.18);border-top-color:rgba(6,182,212,0.85);border-radius:50%;margin:0 auto 22px;animation:spin 1s linear infinite;}' +
+        '.loading-label{font-weight:700;margin-bottom:10px;}' +
+        '.loading-subtext{color:rgba(255,255,255,0.76);font-size:13px;line-height:1.7;}' +
+        '@keyframes spin{to{transform:rotate(360deg);}}<\/style><\/head><body>' +
+        '<div class="loading-card"><div class="loading-ring"><\/div>' +
+        '<div class="loading-label">Loading ' + game.title + '<\/div>' +
+        '<div class="loading-subtext">If the game does not start, check your popup blocker.<\/div><\/div>' +
+        '<\/body><\/html>';
+
+      target.document.open();
+      target.document.write(loadingHtml);
+      target.document.close();
+
+      if (game.special && game.wrapperUrl) {
+        const wrapperHtml =
+          '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
+          '<title>' + game.title + '<\/title>' +
+          '<style>body,html{margin:0;padding:0;min-height:100%;background:#050816;color:#fff;display:flex;align-items:center;justify-content:center;font-family:\'Inter\',sans-serif;}' +
+          'button{padding:16px 28px;border:none;border-radius:14px;background:#06b6d4;color:#fff;font-size:16px;cursor:pointer;box-shadow:0 15px 40px rgba(0,0,0,0.25);}' +
+          'iframe{width:100%;height:100%;border:none;display:none;}<\/style><\/head><body>' +
+          '<iframe id="gameFrame"><\/iframe>' +
+          '<button id="playButton">Load ' + game.title + '<\/button>' +
+          '<script>' +
+          'const btn=document.getElementById("playButton");' +
+          'const fr=document.getElementById("gameFrame");' +
+          'btn.addEventListener("click",async()=>{' +
+          'try{' +
+          'const r=await fetch("' + game.wrapperUrl + '");' +
+          'const t=await r.text();' +
+          'fr.contentDocument.open();' +
+          'fr.contentDocument.write(t);' +
+          'fr.contentDocument.close();' +
+          'fr.style.display="block";' +
+          'btn.style.display="none";' +
+          '}catch(e){' +
+          'alert("Failed to load game.");' +
+          'console.error(e);' +
+          '}' +
+          '});' +
+          '<\/script><\/body><\/html>';
+
+        target.document.open();
+        target.document.write(wrapperHtml);
+        target.document.close();
+        return;
+      }
+
+      target.location.href = game.url + '?v=' + Date.now();
+    }
+
+    if (typeof initLauncher === 'function') {
+      initLauncher();
+    }
+  </script>
+</body>
+</html>

@@ -1,303 +1,58 @@
-// ---- Password gate ----
-const CORRECT = '3point14159';
-// IMPORTANT: base path (case-sensitive, must match GitHub exactly)
-const BASE =
-"https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@latest/";
-// Cache busting with timestamp for fresh loads
-const CACHE_BUST = Date.now();
-function checkPassword(){
-  const val = document.getElementById('pw-input').value;
-  if(val.toLowerCase() === CORRECT.toLowerCase()){
-    const gate = document.getElementById('pw-gate');
-    gate.classList.add('unlocking');
-    setTimeout(()=>{
-      gate.style.display = 'none';
-      const main = document.getElementById('main');
-      main.style.display = 'flex';
-    }, 480);
-  } else {
-    const inp = document.getElementById('pw-input');
-    const err = document.getElementById('pw-error');
-    inp.classList.remove('shake');
-    void inp.offsetWidth;
-    inp.classList.add('shake');
-    err.textContent = 'ACCESS DENIED';
-    inp.value = '';
-    setTimeout(()=>{
-      err.textContent='';
-      inp.classList.remove('shake');
-    }, 1500);
+const CORRECT_PASSWORD = '3point14159';
+const LAUNCHER_WINDOW_NAME = 'CHubLauncher';
+
+const pwGate = document.getElementById('pw-gate');
+const launchScreen = document.getElementById('launch-screen');
+const pwInput = document.getElementById('pw-input');
+const pwError = document.getElementById('pw-error');
+const launchButton = document.getElementById('launch-btn');
+
+pwInput.addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    checkPassword();
   }
-}
-document.getElementById('pw-input').addEventListener('keydown', e => {
-  if(e.key === 'Enter') checkPassword();
 });
-function flash(){
-  const f = document.createElement('div');
-  f.className = 'flash';
-  document.body.appendChild(f);
-  setTimeout(()=>f.remove(),500);
-}
 
-// ---- LOADING SCREEN ----
-function showLoadingScreen(win) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body, html {
-          margin: 0;
-          padding: 0;
-          height: 100%;
-          background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          color: white;
-          overflow: hidden;
-        }
-        .loading-container {
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 30px;
-        }
-        .spinner {
-          width: 60px;
-          height: 60px;
-          border: 4px solid rgba(6, 182, 212, 0.2);
-          border-top-color: #06b6d4;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        .loading-text {
-          font-size: 18px;
-          color: rgba(255, 255, 255, 0.8);
-          letter-spacing: 0.05em;
-        }
-        .loading-subtext {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.5);
-          margin-top: 10px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="loading-container">
-        <div class="spinner"></div>
-        <div>
-          <div class="loading-text">LOADING...</div>
-          <div class="loading-subtext">Please wait</div>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-}
+launchButton.addEventListener('click', openLauncherWindow);
 
-// ---- APP LAUNCHER ----
-function launchApp(filename, title) {
-  flash();
-  
+function checkPassword() {
+  const value = pwInput.value.trim();
+
+  if (value.toLowerCase() === CORRECT_PASSWORD.toLowerCase()) {
+    pwGate.classList.add('unlocking');
+    setTimeout(() => {
+      pwGate.style.display = 'none';
+      launchScreen.style.display = 'flex';
+      pwInput.value = '';
+    }, 480);
+    return;
+  }
+
+  pwInput.classList.remove('shake');
+  void pwInput.offsetWidth;
+  pwInput.classList.add('shake');
+  pwError.textContent = 'ACCESS DENIED';
+  pwInput.value = '';
+
   setTimeout(() => {
-    const win = window.open(
-      "about:blank",
-      title,
-      "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
-    );
-    if (!win) {
-      alert("Popup blocked. Enable popups.");
-      return;
-    }
-    
-    // Show loading screen immediately
-    showLoadingScreen(win);
-    
-    // 10 second timeout
-    let timedOut = false;
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      win.document.open();
-      win.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body, html {
-              margin: 0;
-              padding: 0;
-              height: 100%;
-              background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              color: white;
-            }
-            .error-container {
-              text-align: center;
-              max-width: 400px;
-            }
-            .error-icon {
-              font-size: 60px;
-              margin-bottom: 20px;
-            }
-            .error-title {
-              font-size: 24px;
-              font-weight: 600;
-              margin-bottom: 10px;
-              color: #ef4444;
-            }
-            .error-text {
-              font-size: 14px;
-              color: rgba(255, 255, 255, 0.7);
-              line-height: 1.6;
-              margin-bottom: 20px;
-            }
-            .retry-btn {
-              padding: 12px 32px;
-              background: #06b6d4;
-              border: none;
-              border-radius: 8px;
-              color: white;
-              font-size: 14px;
-              font-weight: 500;
-              cursor: pointer;
-              transition: background 0.3s ease;
-            }
-            .retry-btn:hover {
-              background: #0891b2;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="error-container">
-            <div class="error-icon">⚠️</div>
-            <div class="error-title">Loading Timeout</div>
-            <div class="error-text">
-              The game took too long to load (10+ seconds). This might be a network issue or the server is down. Please try again.
-            </div>
-            <button class="retry-btn" onclick="location.reload()">Retry</button>
-          </div>
-        </body>
-        </html>
-      `);
-      win.document.close();
-    }, 10000);
-    
-    const url = BASE + filename + "?v=" + CACHE_BUST;
-    fetch(url)
-      .then(r => {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.text();
-      })
-      .then(html => {
-        if (!timedOut) {
-          clearTimeout(timeoutId);
-          win.document.open();
-          win.document.write(html);
-          win.document.close();
-        }
-      })
-      .catch(err => {
-        if (!timedOut) {
-          clearTimeout(timeoutId);
-          win.document.open();
-          win.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <style>
-                body, html {
-                  margin: 0;
-                  padding: 0;
-                  height: 100%;
-                  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                  color: white;
-                }
-                .error-container {
-                  text-align: center;
-                  max-width: 400px;
-                }
-                .error-icon {
-                  font-size: 60px;
-                  margin-bottom: 20px;
-                }
-                .error-title {
-                  font-size: 24px;
-                  font-weight: 600;
-                  margin-bottom: 10px;
-                  color: #ef4444;
-                }
-                .error-text {
-                  font-size: 14px;
-                  color: rgba(255, 255, 255, 0.7);
-                  line-height: 1.6;
-                  margin-bottom: 20px;
-                }
-                .error-code {
-                  font-family: 'JetBrains Mono', monospace;
-                  font-size: 12px;
-                  background: rgba(0, 0, 0, 0.3);
-                  padding: 10px;
-                  border-radius: 6px;
-                  margin-top: 15px;
-                  word-break: break-all;
-                  color: rgba(255, 255, 255, 0.6);
-                }
-                .retry-btn {
-                  padding: 12px 32px;
-                  background: #06b6d4;
-                  border: none;
-                  border-radius: 8px;
-                  color: white;
-                  font-size: 14px;
-                  font-weight: 500;
-                  cursor: pointer;
-                  transition: background 0.3s ease;
-                  margin-top: 15px;
-                }
-                .retry-btn:hover {
-                  background: #0891b2;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="error-container">
-                <div class="error-icon">❌</div>
-                <div class="error-title">Failed to Load</div>
-                <div class="error-text">
-                  Could not fetch ${title}. Please check your internet connection and try again.
-                </div>
-                <div class="error-code">${err.message}</div>
-                <button class="retry-btn" onclick="location.reload()">Retry</button>
-              </div>
-            </body>
-            </html>
-          `);
-          win.document.close();
-        }
-      });
-    try { win.focus(); } catch(e) {}
-  }, 150);
+    pwError.textContent = '';
+    pwInput.classList.remove('shake');
+  }, 1500);
 }
 
-// ---- Mario 64 ----
-function launchMario(){
-  launchApp("mario64.html", "sm64");
+function openLauncherWindow() {
+  const win = window.open('https://cdn.jsdelivr.net/gh/ActuallyDigitsofpi314159/CerneyHub@main/launcher.html', LAUNCHER_WINDOW_NAME, 'width=1280,height=760,menubar=no,toolbar=no,location=no,status=no');
+
+  if (!win) {
+    alert('Popup blocked. Enable popups to launch the launcher.');
+    return;
+  }
+
+  try {
+    win.focus();
+  } catch (error) {
+    console.warn('Launcher window opened but focus failed.', error);
+  }
 }
 // ---- Eaglercraft ----
 function launchE112(){
